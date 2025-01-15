@@ -7,8 +7,6 @@
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![GitHub](https://img.shields.io/badge/GitHub-BjornMelin-181717?logo=github)](https://github.com/BjornMelin)
 
-[Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/BjornMelin/stardex)
-
 Unlock the full potential of GitHub stars! Stardex provides advanced search, intelligent filtering, and automatic clustering to help you make sense of any user's starred repositories.
 
 ## 📚 Table of Contents
