@@ -1,153 +1,293 @@
-# ⭐ Stardex: Explore GitHub Stars Intelligently
+# ⭐ Stardex - Explore GitHub Stars Intelligently
 
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?logo=typescript)](https://www.typescriptlang.org/)
+> 🚀 Discover patterns in your GitHub stars through machine learning
+
+[![Next.js](https://img.shields.io/badge/Next.js-13-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15-FF6F00?style=flat-square&logo=tensorflow)](https://www.tensorflow.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.9-3776AB?style=flat-square&logo=python)](https://www.python.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![GitHub](https://img.shields.io/badge/GitHub-BjornMelin-181717?logo=github)](https://github.com/BjornMelin)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev)
 
-Unlock the full potential of GitHub stars! Stardex provides advanced search, intelligent filtering, and automatic clustering to help you make sense of any user's starred repositories.
+Stardex helps you explore and understand your GitHub starred repositories through advanced machine learning clustering and interactive visualizations.
 
 ## 📚 Table of Contents
 
 - [✨ Features](#-features)
 - [🛠️ Technology Stack](#️-technology-stack)
+- [🔎 Detailed Features](#-detailed-features)
+- [🏗️ Architecture](#️-architecture)
 - [🚀 Getting Started](#-getting-started)
-- [📋 Detailed Features](#-detailed-features)
-- [🔍 Search & Filtering](#-search--filtering)
-- [🤖 AI Clustering](#-ai-clustering)
-- [📊 Visualization](#-visualization)
-- [⚡ API Usage](#-api-usage)
+- [🔌 API Reference](#-api-reference)
+- [🧪 Development](#-development)
+- [📈 Performance](#-performance)
 - [👨‍💻 Author](#-author)
-- [📜 License](#-license)
+- [📚 How to Cite](#-how-to-cite)
+- [📝 License](#-license)
 
 ## ✨ Features
 
-- 🔎 **Powerful Search**: Find repos by name, description, and topics
-- 🎛️ **Advanced Filtering**: Filter by language, stars, last updated date, and more
-- 🤖 **AI-Powered Clustering**: Automatically group related repositories
-- ✨ **Intuitive Visualization**: Interactive graph exploration
-- 🔍 **Multi-User Search**: Analyze stars from multiple GitHub users
-- ⚡ **Real-time Updates**: Dynamic results as you type and filter
-- 📱 **Responsive Design**: Works seamlessly on all devices
+- 🔍 **Smart Analysis**: Machine learning-based clustering of repositories
+- 📊 **Interactive Visualization**: Dynamic D3.js visualization of repository clusters
+- ⚡ **Real-time Processing**: Fast data processing and clustering
+- 🔄 **Efficient Data Flow**: Optimized communication between services
+- 🛡️ **Type Safety**: Full TypeScript and Python type coverage
+- 🎨 **Modern UI**: Clean, responsive interface with Tailwind CSS
+- 📱 **Mobile Ready**: Fully responsive design for all devices
 
 ## 🛠️ Technology Stack
 
-### Frontend
+- **Frontend**
 
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- Shadcn UI
-- React Query
-- Zustand
-- TensorFlow.js
-- D3.js/React-force-graph
+  - Next.js 13 with App Router
+  - React 18 with TypeScript
+  - TanStack Query for data management
+  - D3.js for visualizations
+  - Tailwind CSS for styling
+  - Shadcn/ui components
 
-### Backend
+- **Backend**
+  - FastAPI for REST API
+  - TensorFlow for ML operations
+  - Poetry for dependency management
+  - Pydantic for data validation
 
-- Next.js API Routes
-- GitHub REST API
+## 🔎 Detailed Features
 
-### Deployment
+### Search & Filtering
 
-- Vercel
+- Real-time repository search
+- Language-based filtering
+- Star count range filtering
+- Topic-based filtering
+- Date range filtering
 
-## 🚀 Getting Started
+### AI Clustering
 
-```bash
-# Clone the repository
-git clone https://github.com/BjornMelin/stardex.git
-
-# Install dependencies
-cd stardex
-npm install
-
-# Start development server
-npm run dev
-```
-
-## 📋 Detailed Features
-
-### User Input
-
-- Multiple username support
-- Real-time GitHub username autocomplete
-- Input validation and error handling
-- Clear and intuitive interface
-
-### Data Management
-
-- Efficient data fetching
-- Smart caching system
-- Rate limit handling
-- Progress tracking
-
-## 🔍 Search & Filtering
-
-### Search Capabilities
-
-- Full-text search across:
-  - Repository names
-  - Descriptions
-  - Topics
-- Real-time results updating
-- Fuzzy matching support
-
-### Advanced Filters
-
-- Programming Language
-- Star Count Range
-- Last Updated Date
-- Repository Topics
-- Owner/Organization
-
-## 🤖 AI Clustering
-
-### Clustering Features
-
-- Automatic repository grouping
-- Multiple clustering algorithms
-- Customizable parameters
-- Smart feature extraction
+- TensorFlow-powered clustering
+- Feature extraction from repository metadata
+- Automatic cluster size determination
+- Similarity-based grouping
+- Real-time cluster updates
 
 ### Visualization
 
-- Interactive force-directed graph
-- Cluster highlighting
-- Zoom and pan controls
+- Interactive D3.js force-directed graph
+- Cluster-based coloring
+- Zoom and pan capabilities
 - Repository details on hover
+- Smooth animations and transitions
 
-## ⚡ API Usage
+## 🏗️ Architecture
 
-- Efficient rate limit management
-- Smart request queuing
-- Exponential backoff
-- Comprehensive error handling
+The application is structured as a monorepo with two main services:
+
+### 🎨 Frontend Service (Next.js)
+
+- Located in `/frontend`
+- Built with Next.js, React, and TypeScript
+- Uses TanStack Query for data fetching
+- Implements a responsive UI with Tailwind CSS
+- Visualizes repository clusters using D3.js
+
+### ⚙️ Backend Service (FastAPI)
+
+- Located in `/backend`
+- Built with FastAPI and Python
+- Handles repository clustering using TensorFlow
+- Provides RESTful API endpoints
+- Implements efficient data processing and validation
+
+## 🚀 Getting Started
+
+1. **Clone & Install:**
+
+   ```bash
+   # Install root dependencies
+   npm install
+
+   # Install frontend dependencies
+   cd frontend
+   npm install
+
+   # Install backend dependencies
+   cd ../backend
+   poetry install
+   ```
+
+2. **Environment Setup:**
+
+   ```bash
+   # Frontend (.env.local)
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+3. **Development:**
+
+   ```bash
+   # Run both services
+   npm run dev
+
+   # Or run individually
+   npm run dev:frontend
+   npm run dev:backend
+   ```
+
+## 🔌 API Reference
+
+### 🔄 POST /api/cluster
+
+Clusters GitHub repositories based on their features.
+
+<details>
+<summary>Request Body</summary>
+
+```json
+{
+  "repositories": [
+    {
+      "id": number,
+      "name": string,
+      "full_name": string,
+      "description": string | null,
+      "html_url": string,
+      "stargazers_count": number,
+      "forks_count": number,
+      "open_issues_count": number,
+      "size": number,
+      "watchers_count": number,
+      "language": string | null,
+      "topics": string[],
+      "owner": {
+        "login": string,
+        "avatar_url": string
+      },
+      "updated_at": string
+    }
+  ]
+}
+```
+
+</details>
+
+<details>
+<summary>Response</summary>
+
+```json
+[
+  {
+    "repo": {
+      // Repository data (same as input)
+    },
+    "cluster_id": number,
+    "coordinates": [number, number]
+  }
+]
+```
+
+</details>
+
+### 🏥 GET /health
+
+Health check endpoint.
+
+```json
+{
+  "status": "healthy"
+}
+```
+
+## 🧪 Development
+
+### 🔬 Technical Implementation
+
+The clustering process follows these steps:
+
+1. 📊 **Feature Extraction**
+
+   - Star count, forks, issues
+   - Repository size and activity
+   - Language and topic analysis
+
+2. 📉 **Dimensionality Reduction**
+
+   - t-SNE like approach
+   - Preserves repository relationships
+
+3. 🎯 **Clustering**
+
+   - DBSCAN algorithm
+   - Automatic cluster detection
+
+4. 🎨 **Visualization**
+   - Interactive D3.js rendering
+   - Cluster-based coloring
+   - Smooth animations
+
+### 🛠️ Code Quality
+
+- 📝 **Style Guides**
+
+  - Frontend: ESLint + Prettier
+  - Backend: Black + isort
+
+- ✅ **Testing**
+
+  - Frontend: Jest + React Testing Library
+  - Backend: pytest
+
+- 🔄 **Git Workflow**
+  - Feature branches
+  - Pull request reviews
+  - Semantic versioning
+
+## 📈 Performance
+
+### ⚡ Backend Optimizations
+
+- Efficient tensor operations
+- Smart memory management
+- Request validation & caching
+
+### 🚀 Frontend Optimizations
+
+- Optimized D3.js rendering
+- React Query data caching
+- Component lazy loading
 
 ## 👨‍💻 Author
 
 ### Bjorn Melin
 
-[![AWS SAA](https://img.shields.io/badge/AWS-Solutions%20Architect%20Associate-FF9900?logo=amazon-aws)](https://www.credly.com/org/amazon-web-services/badge/aws-certified-solutions-architect-associate)
-[![AWS DVA](https://img.shields.io/badge/AWS-Developer%20Associate-FF9900?logo=amazon-aws)](https://www.credly.com/org/amazon-web-services/badge/aws-certified-developer-associate)
-[![AWS ML](https://img.shields.io/badge/AWS-Machine%20Learning%20Engineer-FF9900?logo=amazon-aws)](https://www.credly.com/org/amazon-web-services/badge/aws-certified-machine-learning-engineer-associate)
+- GitHub: [@BjornMelin](https://github.com/BjornMelin)
+- Website: [bjornmelin.io](https://bjornmelin.io)
+- LinkedIn: [@bjorn-melin](https://www.linkedin.com/in/bjorn-melin/)
 
-AWS-certified Solutions Architect and Machine Learning Engineer with expertise in cloud architecture and modern development practices.
+## 📚 How to Cite
 
-- [GitHub](https://github.com/BjornMelin)
-- [LinkedIn](https://www.linkedin.com/in/bjorn-melin/)
-- [Portfolio](https://bjornmelin.io)
+If you use Stardex in your research or project, please cite it as follows:
 
-## 📜 License
+```bibtex
+@software{melin2024stardex,
+  author = {Melin, Bjorn},
+  title = {Stardex: GitHub Stars Explorer},
+  year = {2024},
+  publisher = {GitHub},
+  url = {https://github.com/BjornMelin/stardex},
+  version = {1.0.0},
+  description = {A machine learning-powered tool for exploring and understanding GitHub starred repositories through clustering and interactive visualizations}
+}
+```
+
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-<div align="center">
-
+<p align="center">
 Built with ❤️ by [Bjorn Melin](https://bjornmelin.io)
-
-</div>
+</p>
