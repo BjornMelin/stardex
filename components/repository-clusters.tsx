@@ -80,7 +80,6 @@ function generateClusterName(group: Omit<ClusterGroup, 'name' | 'description'>):
 
 export function RepositoryClusters() {
   const { repos } = useGitHubStore();
-  const [numClusters, setNumClusters] = useState(5);
   const [clusters, setClusters] = useState<ClusterGroup[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
@@ -93,14 +92,19 @@ export function RepositoryClusters() {
 
     const updateClusters = async () => {
       try {
-        const clusteredPoints = await clusterRepositories(allRepos, numClusters);
+        const clusteredPoints = await clusterRepositories(allRepos);
         
-        const groupedClusters: ClusterGroup[] = Array.from({ length: numClusters }, (_, i) => {
+        // Get unique cluster IDs from DBSCAN results
+        const clusterIds = Array.from(new Set(clusteredPoints.map(p => p.clusterId)));
+        
+        const groupedClusters: ClusterGroup[] = clusterIds.map((clusterId, i) => {
           const clusterRepos = clusteredPoints
-            .filter(point => point.clusterId === i)
+            .filter(point => point.clusterId === clusterId)
             .map(point => point.repo);
 
-          const languages = clusterRepos.map(repo => repo.language).filter(Boolean);
+          const languages = clusterRepos
+            .map(repo => repo.language)
+            .filter((lang): lang is string => lang !== null);
           const languageCounts = languages.reduce((acc, lang) => {
             acc[lang] = (acc[lang] || 0) + 1;
             return acc;
@@ -125,7 +129,7 @@ export function RepositoryClusters() {
           const baseGroup = {
             id: i,
             repos: clusterRepos,
-            commonLanguages: Array.from(new Set(languages)),
+            commonLanguages: Array.from(new Set(languages)).filter(lang => lang !== null),
             commonTopics,
             primaryLanguage,
             totalStars,
@@ -137,7 +141,12 @@ export function RepositoryClusters() {
           };
         }).filter(cluster => cluster.repos.length > 0);
 
-        groupedClusters.sort((a, b) => b.totalStars - a.totalStars);
+        // Sort clusters by size and total stars
+        groupedClusters.sort((a, b) => 
+          b.repos.length - a.repos.length || 
+          b.totalStars - a.totalStars
+        );
+        
         setClusters(groupedClusters);
         if (selectedCluster === null && groupedClusters.length > 0) {
           setSelectedCluster(groupedClusters[0].id);
@@ -152,7 +161,7 @@ export function RepositoryClusters() {
     };
 
     updateClusters();
-  }, [repos, numClusters, toast]);
+  }, [repos, toast]);
 
   const sortRepositories = (repos: GitHubRepo[]) => {
     return [...repos].sort((a, b) => {
@@ -231,16 +240,6 @@ export function RepositoryClusters() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Label>Number of Groups ({numClusters})</Label>
-            <Slider
-              value={[numClusters]}
-              onValueChange={([value]) => setNumClusters(value)}
-              min={2}
-              max={10}
-              step={1}
-            />
-          </div>
 
           <div className="grid grid-cols-4 gap-6">
             <div className="space-y-2">
