@@ -14,7 +14,7 @@ export default function AboutPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-gradient-to-br from-background to-muted">
+          <Card className="bg-gradient-to-br from-background to-muted transition-transform hover:scale-105">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -29,7 +29,7 @@ export default function AboutPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-background to-muted">
+          <Card className="bg-gradient-to-br from-background to-muted transition-transform hover:scale-105">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -45,7 +45,7 @@ export default function AboutPage() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-background to-muted transition-transform hover:scale-105">
           <CardContent className="p-6 space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -82,7 +82,7 @@ export default function AboutPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-br from-background to-muted transition-transform hover:scale-105">
           <CardContent className="p-6 space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -92,14 +92,14 @@ export default function AboutPage() {
             </div>
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                Hi, I'm Bjorn Melin, a Senior Data Scientist specializing in machine learning and cloud solutions architecture. 
+                Hi, I&apos;m Bjorn Melin, a Senior Data Scientist specializing in machine learning and cloud solutions architecture. 
                 Stardex was born from my passion for organizing and discovering
                 interesting GitHub projects in a more intelligent way.
               </p>
               <p>
                 Based in Salt Lake City, I bring expertise in AI/ML and cloud architecture to create
-                tools that help researchers and developers be more productive. When I'm not coding, 
-                you can find me freestyle skiing in Utah's mountains.
+                tools that help researchers and developers be more productive. When I&apos;m not coding, 
+                you can find me freestyle skiing in Utah&apos;s mountains.
               </p>
             </div>
           </CardContent>

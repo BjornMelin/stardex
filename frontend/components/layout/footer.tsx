@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Github, Linkedin, BookText, BookOpenCheck } from "lucide-react";
+import {
+  GithubIcon,
+  Linkedin,
+  BookText,
+  BookOpenCheck,
+  Globe,
+} from "lucide-react";
 
 export function Footer() {
   return (
@@ -46,7 +52,7 @@ export function Footer() {
                 className="text-foreground/60 hover:text-foreground"
                 aria-label="GitHub"
               >
-                <Github className="w-5 h-5" />
+                <GithubIcon className="w-5 h-5" />
               </a>
               <a
                 href="https://linkedin.com/in/bjorn-melin"
@@ -76,11 +82,13 @@ export function Footer() {
                 <BookOpenCheck className="w-5 h-5" />
               </a>
               <a
-                href="mailto:bjornmelin16@gmail.com"
+                href="https://bjornmelin.io"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-foreground/60 hover:text-foreground"
-                aria-label="Email"
+                aria-label="Personal Website"
               >
-                <Mail className="w-5 h-5" />
+                <Globe className="w-5 h-5" />
               </a>
             </div>
           </div>

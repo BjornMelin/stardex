@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Search, Menu, Sun, Moon, Laptop } from "lucide-react";
 import { useTheme } from "next-themes";
-import { UserSearch } from "@/components/user-search";
+import { UserSearch } from "@/components/user/user-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +29,12 @@ export function Navbar() {
         <nav className="flex items-center gap-6">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold">Stardex</span>
+              <span className="text-2xl font-bold">Stardex</span>
             </Link>
             <Separator orientation="vertical" className="h-6" />
-            <p className="text-sm font-medium">Explore GitHub Stars Intelligently</p>
+            <p className="text-base font-medium">
+              Explore GitHub Stars Intelligently
+            </p>
           </div>
 
           <div className="flex items-center gap-4 ml-auto">

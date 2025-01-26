@@ -1,10 +1,12 @@
+"use client";
+
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { Selection, BaseType } from 'd3';
-import { GitHubRepo } from '../lib/github';
-import { ClusteredRepo, clusterRepositories } from '../lib/clustering-api';
-import { Card } from '../components/ui/card';
-import { useToast } from '../hooks/use-toast';
+import { GitHubRepo } from '@/lib/github';
+import { ClusteredRepo, clusterRepositories } from '@/lib/clustering-api';
+import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 
 interface RepositoryClustersProps {
   repositories: GitHubRepo[];

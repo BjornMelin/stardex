@@ -70,41 +70,80 @@ export function UserSearch({ variant = 'default' }: UserSearchProps) {
   if (variant === 'navbar') {
     return (
       <div className="relative w-full">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Search GitHub users..."
-              value={searchValue}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-9 pl-8"
-            />
-            {searchValue && (
-              <div className="absolute top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md z-50">
-                <Command>
-                  <CommandList>
-                    <CommandEmpty>No users found.</CommandEmpty>
-                    <CommandGroup>
-                      {users?.map((user) => (
-                        <CommandItem
-                          key={user.id}
-                          value={user.login}
-                          onSelect={handleSelect}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <img
-                            src={user.avatar_url}
-                            alt={user.login}
-                            className="h-6 w-6 rounded-full"
-                          />
-                          {user.login}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-1 min-h-[24px]">
+            {selectedUsers.map((user) => (
+              <Badge key={user} variant="secondary" className="h-6 text-sm gap-1">
+                {user}
+                <button
+                  className="ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      removeUser(user);
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={() => removeUser(user)}
+                >
+                  <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                  <span className="sr-only">Remove {user}</span>
+                </button>
+              </Badge>
+            ))}
+          </div>
+          <div className="relative flex gap-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Search GitHub users..."
+                  value={searchValue}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full h-9 pl-8"
+                />
+                {searchValue && (
+                  <div className="absolute top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md z-50">
+                    <Command>
+                      <CommandList>
+                        <CommandEmpty>No users found.</CommandEmpty>
+                        <CommandGroup>
+                          {users?.map((user) => (
+                            <CommandItem
+                              key={user.id}
+                              value={user.login}
+                              onSelect={handleSelect}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <img
+                                src={user.avatar_url}
+                                alt={user.login}
+                                className="h-6 w-6 rounded-full"
+                              />
+                              {user.login}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
               </div>
+            </div>
+            {selectedUsers.length > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  window.location.href = '/';
+                }}
+                className="shrink-0 h-9"
+              >
+                Search
+              </Button>
             )}
           </div>
         </div>
