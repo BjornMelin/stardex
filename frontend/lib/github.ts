@@ -1,9 +1,11 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const githubUsernameSchema = z.string().regex(
-  /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/,
-  'Invalid GitHub username format'
-);
+export const githubUsernameSchema = z
+  .string()
+  .regex(
+    /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/,
+    "Invalid GitHub username format"
+  );
 
 export interface GitHubUser {
   login: string;
@@ -41,35 +43,39 @@ export interface GitHubList {
   repositories: GitHubRepo[];
 }
 
-const GITHUB_API_BASE = 'https://api.github.com';
+const GITHUB_API_BASE = "https://api.github.com";
 
 export class RateLimitError extends Error {
   constructor(message: string, public resetTime: Date) {
     super(message);
-    this.name = 'RateLimitError';
+    this.name = "RateLimitError";
   }
 }
 
 async function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 3): Promise<Response> {
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  retries = 3
+): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(url, {
         ...options,
         headers: {
-          'Accept': 'application/vnd.github.v3+json',
+          Accept: "application/vnd.github.v3+json",
           ...options.headers,
         },
       });
 
       if (response.status === 403) {
         const resetTime = new Date(
-          Number(response.headers.get('x-ratelimit-reset')) * 1000
+          Number(response.headers.get("x-ratelimit-reset")) * 1000
         );
-        throw new RateLimitError('Rate limit exceeded', resetTime);
+        throw new RateLimitError("Rate limit exceeded", resetTime);
       }
 
       if (!response.ok) {
@@ -79,14 +85,14 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
       return response;
     } catch (error) {
       if (error instanceof RateLimitError) throw error;
-      
+
       if (i === retries - 1) throw error;
-      
+
       await delay(Math.pow(2, i) * 1000);
     }
   }
-  
-  throw new Error('Failed after retries');
+
+  throw new Error("Failed after retries");
 }
 
 export async function searchUsers(query: string): Promise<GitHubUser[]> {
@@ -94,15 +100,17 @@ export async function searchUsers(query: string): Promise<GitHubUser[]> {
 
   try {
     const response = await fetchWithRetry(
-      `${GITHUB_API_BASE}/search/users?q=${encodeURIComponent(query)}+in:login&per_page=5`
+      `${GITHUB_API_BASE}/search/users?q=${encodeURIComponent(
+        query
+      )}+in:login&per_page=5`
     );
 
     const data = await response.json();
     return data.items;
   } catch (error) {
     if (error instanceof RateLimitError) throw error;
-    console.error('Error searching GitHub users:', error);
-    throw new Error('Failed to search GitHub users');
+    console.error("Error searching GitHub users:", error);
+    throw new Error("Failed to search GitHub users");
   }
 }
 
@@ -110,11 +118,13 @@ export async function getStarredRepos(username: string): Promise<GitHubRepo[]> {
   try {
     const allRepos: GitHubRepo[] = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = 100; // Maximum allowed by GitHub API
 
     while (true) {
       const response = await fetchWithRetry(
-        `${GITHUB_API_BASE}/users/${encodeURIComponent(username)}/starred?per_page=${perPage}&page=${page}`
+        `${GITHUB_API_BASE}/users/${encodeURIComponent(
+          username
+        )}/starred?per_page=${perPage}&page=${page}`
       );
 
       const repos = await response.json();
@@ -129,21 +139,21 @@ export async function getStarredRepos(username: string): Promise<GitHubRepo[]> {
     return allRepos;
   } catch (error) {
     if (error instanceof RateLimitError) throw error;
-    console.error('Error fetching starred repos:', error);
-    throw new Error('Failed to fetch starred repositories');
+    console.error("Error fetching starred repos:", error);
+    throw new Error("Failed to fetch starred repositories");
   }
 }
 
 export async function getUserLists(username: string): Promise<GitHubList[]> {
   try {
     const starredRepos = await getStarredRepos(username);
-    
+
     // Group repositories by common characteristics to create virtual lists
     const lists: GitHubList[] = [];
-    
+
     // Create language-based lists
     const languageGroups = new Map<string, GitHubRepo[]>();
-    starredRepos.forEach(repo => {
+    starredRepos.forEach((repo) => {
       if (repo.language) {
         const repos = languageGroups.get(repo.language) || [];
         repos.push(repo);
@@ -152,7 +162,8 @@ export async function getUserLists(username: string): Promise<GitHubList[]> {
     });
 
     languageGroups.forEach((repos, language) => {
-      if (repos.length >= 3) { // Only create lists for languages with 3+ repos
+      if (repos.length >= 3) {
+        // Only create lists for languages with 3+ repos
         lists.push({
           id: lists.length + 1,
           name: `${language} Projects`,
@@ -166,8 +177,8 @@ export async function getUserLists(username: string): Promise<GitHubList[]> {
 
     // Create topic-based lists
     const topicGroups = new Map<string, GitHubRepo[]>();
-    starredRepos.forEach(repo => {
-      repo.topics.forEach(topic => {
+    starredRepos.forEach((repo) => {
+      repo.topics.forEach((topic) => {
         const repos = topicGroups.get(topic) || [];
         repos.push(repo);
         topicGroups.set(topic, repos);
@@ -175,7 +186,8 @@ export async function getUserLists(username: string): Promise<GitHubList[]> {
     });
 
     topicGroups.forEach((repos, topic) => {
-      if (repos.length >= 3) { // Only create lists for topics with 3+ repos
+      if (repos.length >= 3) {
+        // Only create lists for topics with 3+ repos
         lists.push({
           id: lists.length + 1,
           name: `${topic.charAt(0).toUpperCase() + topic.slice(1)} Collection`,
@@ -189,7 +201,7 @@ export async function getUserLists(username: string): Promise<GitHubList[]> {
 
     return lists.sort((a, b) => b.repository_count - a.repository_count);
   } catch (error) {
-    console.error('Error creating user lists:', error);
+    console.error("Error creating user lists:", error);
     return []; // Return empty array if lists cannot be created
   }
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useState, useCallback, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -14,27 +14,33 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { searchUsers, githubUsernameSchema } from '@/lib/github';
-import { useGitHubStore } from '@/store/github';
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { searchUsers, githubUsernameSchema } from "@/lib/github";
+import { useGitHubStore } from "@/store/github";
 
 export function UserSearch() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState("");
   const { toast } = useToast();
   const debounceTimer = useRef<NodeJS.Timeout>();
-  const { selectedUsers, addUser, removeUser, clearUsers, setShouldFetchRepos } = useGitHubStore();
+  const {
+    selectedUsers,
+    addUser,
+    removeUser,
+    clearUsers,
+    setShouldFetchRepos,
+  } = useGitHubStore();
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['githubUsers', searchValue],
+    queryKey: ["githubUsers", searchValue],
     queryFn: () => searchUsers(searchValue),
     enabled: searchValue.length > 0,
     staleTime: 1000 * 60,
@@ -48,24 +54,27 @@ export function UserSearch() {
     setSearchValue(search);
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && selectedUsers.length > 0) {
-      router.push('/');
-    }
-  }, [router, selectedUsers.length]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && selectedUsers.length > 0) {
+        router.push("/");
+      }
+    },
+    [router, selectedUsers.length]
+  );
 
   const handleSelect = useCallback(
     (username: string) => {
       try {
         githubUsernameSchema.parse(username);
         addUser(username);
-        setSearchValue('');
+        setSearchValue("");
         setOpen(false);
       } catch (error) {
         toast({
-          title: 'Invalid username',
-          description: 'Please enter a valid GitHub username',
-          variant: 'destructive',
+          title: "Invalid username",
+          description: "Please enter a valid GitHub username",
+          variant: "destructive",
         });
       }
     },
@@ -81,7 +90,7 @@ export function UserSearch() {
             <button
               className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   removeUser(user);
                 }
               }}
@@ -149,7 +158,7 @@ export function UserSearch() {
               variant="default"
               onClick={() => {
                 setShouldFetchRepos(true);
-                router.push('/');
+                router.push("/");
               }}
               className="shrink-0"
             >

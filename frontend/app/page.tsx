@@ -1,10 +1,10 @@
 "use client";
 
-import { UserSearch } from '@/components/user/user-search';
-import { RepositoryList } from '@/components/repository/repository-list';
-import { Search, GitBranch, Boxes } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { useGitHubStore } from '@/store/github';
+import { UserSearch } from "@/components/user/user-search";
+import { RepositoryList } from "@/components/repository/repository-list";
+import { Search, GitBranch, Boxes } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { useGitHubStore } from "@/store/github";
 
 export default function Home() {
   const { selectedUsers, shouldFetchRepos } = useGitHubStore();
@@ -22,15 +22,16 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            
+
             <h1 className="text-6xl font-bold tracking-tight animate-in fade-in slide-in-from-bottom-8 duration-1000">
               <span className="inline-block bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                 Stardex
               </span>
             </h1>
-            
+
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000">
-              Explore GitHub Stars Intelligently with advanced clustering and organization
+              Explore GitHub Stars Intelligently with advanced clustering and
+              organization
             </p>
 
             <div className="animate-in fade-in slide-in-from-bottom-16 duration-1000">
@@ -60,7 +61,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">Smart Search</h3>
                 <p className="text-muted-foreground">
-                  Find repositories quickly with intelligent search and filtering
+                  Find repositories quickly with intelligent search and
+                  filtering
                 </p>
               </CardContent>
             </Card>
@@ -72,7 +74,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">AI Clustering</h3>
                 <p className="text-muted-foreground">
-                  Automatically group similar repositories using machine learning
+                  Automatically group similar repositories using machine
+                  learning
                 </p>
               </CardContent>
             </Card>

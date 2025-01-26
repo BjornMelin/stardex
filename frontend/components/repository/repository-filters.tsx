@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useCallback } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useState, useCallback } from "react";
+import { Search, SlidersHorizontal } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { useGitHubStore } from '@/store/github';
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { useGitHubStore } from "@/store/github";
 
-export type SortOption = 'stars' | 'updated' | 'name';
+export type SortOption = "stars" | "updated" | "name";
 export type FilterCriteria = {
   search: string;
-  language: string;
+  language: string | null; // Updated to allow null
   minStars: number;
   topics: string[];
   sortBy: SortOption;
@@ -38,17 +38,30 @@ export function RepositoryFilters() {
 
   // Get unique languages and topics from all repos
   const allRepos = Object.values(repos).flat();
-  const languages = Array.from(new Set(allRepos.map(repo => repo.language).filter(Boolean)));
-  const allTopics = Array.from(new Set(allRepos.flatMap(repo => repo.topics)));
-  const maxStars = Math.max(...allRepos.map(repo => repo.stargazers_count), 0);
+  const languages = Array.from(
+    new Set(allRepos.map((repo) => repo.language).filter(Boolean))
+  );
+  const allTopics = Array.from(
+    new Set(allRepos.flatMap((repo) => repo.topics))
+  );
+  const maxStars = Math.max(
+    ...allRepos.map((repo) => repo.stargazers_count),
+    0
+  );
 
-  const handleSearch = useCallback((search: string) => {
-    setFilters({ ...filters, search });
-  }, [filters, setFilters]);
+  const handleSearch = useCallback(
+    (search: string) => {
+      setFilters({ ...filters, search });
+    },
+    [filters, setFilters]
+  );
 
-  const handleFilterChange = useCallback((key: keyof FilterCriteria, value: any) => {
-    setFilters({ ...filters, [key]: value });
-  }, [filters, setFilters]);
+  const handleFilterChange = useCallback(
+    (key: keyof FilterCriteria, value: any) => {
+      setFilters({ ...filters, [key]: value });
+    },
+    [filters, setFilters]
+  );
 
   return (
     <div className="space-y-4">
@@ -64,7 +77,9 @@ export function RepositoryFilters() {
         </div>
         <Select
           value={filters.sortBy}
-          onValueChange={(value: SortOption) => handleFilterChange('sortBy', value)}
+          onValueChange={(value: SortOption) =>
+            handleFilterChange("sortBy", value)
+          }
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
@@ -89,8 +104,13 @@ export function RepositoryFilters() {
               <div className="space-y-2">
                 <Label>Language</Label>
                 <Select
-                  value={filters.language}
-                  onValueChange={(value) => handleFilterChange('language', value)}
+                  value={filters.language ?? "_all"}
+                  onValueChange={(value) =>
+                    handleFilterChange(
+                      "language",
+                      value === "_all" ? null : value
+                    )
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="All Languages" />
@@ -98,7 +118,7 @@ export function RepositoryFilters() {
                   <SelectContent>
                     <SelectItem value="_all">All Languages</SelectItem>
                     {languages.sort().map((lang) => (
-                      <SelectItem key={lang} value={lang}>
+                      <SelectItem key={lang} value={lang as string}>
                         {lang}
                       </SelectItem>
                     ))}
@@ -110,7 +130,9 @@ export function RepositoryFilters() {
                 <div className="pt-2">
                   <Slider
                     value={[filters.minStars]}
-                    onValueChange={([value]) => handleFilterChange('minStars', value)}
+                    onValueChange={([value]) =>
+                      handleFilterChange("minStars", value)
+                    }
                     max={maxStars}
                     step={1}
                   />
@@ -125,13 +147,15 @@ export function RepositoryFilters() {
                   {allTopics.map((topic) => (
                     <Badge
                       key={topic}
-                      variant={filters.topics.includes(topic) ? "default" : "outline"}
+                      variant={
+                        filters.topics.includes(topic) ? "default" : "outline"
+                      }
                       className="cursor-pointer"
                       onClick={() => {
                         const newTopics = filters.topics.includes(topic)
-                          ? filters.topics.filter(t => t !== topic)
+                          ? filters.topics.filter((t) => t !== topic)
                           : [...filters.topics, topic];
-                        handleFilterChange('topics', newTopics);
+                        handleFilterChange("topics", newTopics);
                       }}
                     >
                       {topic}
