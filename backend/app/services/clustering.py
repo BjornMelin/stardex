@@ -1,211 +1,232 @@
 import numpy as np
 import tensorflow as tf
-from typing import List, Tuple, Dict, Optional
+from typing import List, Dict
 from sklearn.preprocessing import StandardScaler
-from ..models import GitHubRepo, ClusteredRepo
+from sklearn.cluster import DBSCAN, AgglomerativeClustering
+from sklearn.feature_extraction.text import TfidfVectorizer
+from ..models import GitHubRepo, Cluster, ClusteringResponse
 
 class ClusteringService:
-    """Service for clustering GitHub repositories using TensorFlow."""
+    """Service for clustering GitHub repositories."""
     
-    def __init__(self, n_clusters: int = 5, min_samples: int = 3):
-        """
-        Initialize the clustering service.
-        
-        Args:
-            n_clusters: Number of clusters for K-means (default: 5)
-            min_samples: Minimum samples for considering a valid cluster (default: 3)
-        """
-        self.n_clusters = n_clusters
-        self.min_samples = min_samples
+    def __init__(self):
         self.scaler = StandardScaler()
+        self.tfidf = TfidfVectorizer(stop_words='english')
         
     def _validate_input(self, repos: List[GitHubRepo]) -> None:
-        """
-        Validate input repositories.
-        
-        Args:
-            repos: List of repositories to validate
-            
-        Raises:
-            ValueError: If input validation fails
-        """
         if not repos:
             raise ValueError("No repositories provided")
-        if len(repos) < self.min_samples:
-            raise ValueError(f"At least {self.min_samples} repositories are required")
+        if len(repos) < 2:
+            raise ValueError("At least 2 repositories are required")
 
-    def extract_features(self, repos: List[GitHubRepo]) -> np.ndarray:
-        """
-        Convert repositories to feature vectors using advanced metrics.
+    def extract_features(self, repos: List[GitHubRepo], features_to_use: List[str]) -> np.ndarray:
+        """Extract features based on user selection."""
+        feature_vectors = []
         
-        Args:
-            repos: List of repositories to extract features from
-            
-        Returns:
-            numpy.ndarray: Feature matrix
-        """
-        features = []
         for repo in repos:
-            # Calculate derived metrics
-            activity_score = np.log1p(
-                repo.stargazers_count + 
-                repo.forks_count * 2 + 
-                repo.watchers_count
-            )
+            features = []
             
-            issue_ratio = (repo.open_issues_count / (repo.stargazers_count + 1)
-                          if repo.stargazers_count > 0 else 0)
+            if "metrics" in features_to_use:
+                # Numerical metrics
+                metrics = [
+                    np.log1p(repo.stargazers_count),
+                    np.log1p(repo.forks_count),
+                    np.log1p(repo.size),
+                    np.log1p(repo.watchers_count),
+                    repo.open_issues_count / (repo.stargazers_count + 1)
+                ]
+                features.extend(metrics)
             
-            # Combine features with weights
-            feature_vector = [
-                np.log1p(repo.stargazers_count),  # Log-transform stars
-                np.log1p(repo.forks_count),       # Log-transform forks
-                issue_ratio,                      # Issue engagement metric
-                np.log1p(repo.size),             # Log-transform size
-                activity_score,                   # Combined activity metric
-                len(repo.topics) / 10,           # Normalized topic count
-                1 if repo.language else 0         # Has primary language
-            ]
-            features.append(feature_vector)
+            if "language" in features_to_use and repo.language:
+                # One-hot encode language
+                features.append(1.0)
+            else:
+                features.append(0.0)
+                
+            if "topics" in features_to_use:
+                # Topic count
+                features.append(len(repo.topics) / 10.0)
             
-        feature_matrix = np.array(features, dtype=np.float32)
+            feature_vectors.append(features)
+        
+        # Convert to numpy array
+        feature_matrix = np.array(feature_vectors, dtype=np.float32)
+        
+        if "description" in features_to_use:
+            # Add TF-IDF features for descriptions
+            descriptions = [repo.description or "" for repo in repos]
+            tfidf_matrix = self.tfidf.fit_transform(descriptions).toarray()
+            feature_matrix = np.hstack([feature_matrix, tfidf_matrix])
+        
         return self.scaler.fit_transform(feature_matrix)
 
-    @tf.function(reduce_retracing=True)
-    def kmeans_clustering(self, features: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+    def kmeans_clustering(self, features: np.ndarray, n_clusters: int = 5) -> np.ndarray:
         """
-        Perform K-means clustering using TensorFlow with optimizations.
-        
-        Args:
-            features: Feature tensor to cluster
-            
-        Returns:
-            Tuple containing cluster assignments and centroids
+        Perform K-means clustering using TensorFlow, enforcing int64 consistency.
         """
-        # Convert to TensorFlow tensor if needed
-        if not isinstance(features, tf.Tensor):
-            features = tf.convert_to_tensor(features, dtype=tf.float32)
+        # Convert all shapes and parameters to int64
+        features_tensor = tf.convert_to_tensor(features, dtype=tf.float32)
+        num_points = tf.cast(tf.shape(features_tensor)[0], tf.int64)
+        num_clusters = tf.cast(n_clusters, tf.int64)
+        num_clusters = tf.minimum(num_clusters, num_points - 1)
         
-        # Initialize centroids using k-means++ method
-        num_points = tf.shape(features)[0]
-        num_clusters = tf.minimum(self.n_clusters, num_points - 1)
-        
-        # Choose first centroid randomly
-        first_centroid = tf.gather(features, tf.random.uniform([], 0, num_points, dtype=tf.int32))
+        # Initialize centroids using k-means++
+        first_idx = tf.random.uniform([], 0, num_points, dtype=tf.int64)
+        first_centroid = tf.gather(features_tensor, first_idx)
         centroids = tf.expand_dims(first_centroid, 0)
         
-        # Choose remaining centroids using k-means++ algorithm
-        for _ in tf.range(1, num_clusters):
-            # Calculate distances to existing centroids
-            distances = tf.reduce_min(tf.reduce_sum(
-                tf.square(tf.expand_dims(features, 1) - tf.expand_dims(centroids, 0)),
-                axis=2
-            ), axis=1)
-            
-            # Choose next centroid with probability proportional to squared distance
+        # Choose remaining centroids
+        for _ in tf.range(num_clusters - 1, dtype=tf.int64):
+            distances = tf.reduce_min(
+                tf.reduce_sum(
+                    tf.square(tf.expand_dims(features_tensor, 1) - tf.expand_dims(centroids, 0)),
+                    axis=2
+                ),
+                axis=1
+            )
             probs = distances / tf.reduce_sum(distances)
-            next_centroid_idx = tf.random.categorical(tf.expand_dims(tf.math.log(probs), 0), 1)[0, 0]
-            next_centroid = tf.gather(features, next_centroid_idx)
+            next_centroid_idx = tf.cast(tf.random.categorical(tf.math.log([probs]), 1)[0, 0], tf.int64)
+            next_centroid = tf.gather(features_tensor, next_centroid_idx)
             centroids = tf.concat([centroids, tf.expand_dims(next_centroid, 0)], axis=0)
         
         # Optimize clusters
-        for _ in tf.range(100):  # Max iterations
-            # Calculate distances to centroids using vectorized operations
+        for _ in range(100):
             distances = tf.reduce_sum(
-                tf.square(tf.expand_dims(features, 1) - tf.expand_dims(centroids, 0)),
+                tf.square(tf.expand_dims(features_tensor, 1) - tf.expand_dims(centroids, 0)),
                 axis=2
             )
+            assignments = tf.argmin(distances, axis=1, output_type=tf.int64)
             
-            # Assign points to nearest centroid
-            assignments = tf.argmin(distances, axis=1)
-            
-            # Update centroids using TensorFlow's advanced indexing
             new_centroids = tf.zeros_like(centroids)
-            for i in tf.range(num_clusters):
+            for i in tf.range(num_clusters, dtype=tf.int64):
                 mask = tf.cast(tf.equal(assignments, i), tf.float32)
                 masked_sum = tf.reduce_sum(
-                    tf.multiply(tf.expand_dims(mask, 1), features),
+                    tf.expand_dims(mask, 1) * features_tensor,
                     axis=0
                 )
-                count = tf.maximum(tf.reduce_sum(mask), 1.0)  # Avoid division by zero
+                count = tf.maximum(tf.reduce_sum(mask), 1.0)
                 new_centroids = tf.tensor_scatter_nd_update(
                     new_centroids,
                     [[i]],
                     [masked_sum / count]
                 )
             
-            # Check convergence using reduced operations
             if tf.reduce_all(tf.abs(new_centroids - centroids) < 1e-6):
                 break
-                
             centroids = new_centroids
             
-        return assignments, centroids
+        # Cast back to int32 for external usage
+        return tf.cast(assignments, tf.int32).numpy()
+
+    def dbscan_clustering(self, features: np.ndarray, eps: float = 0.5, min_samples: int = 5) -> np.ndarray:
+        """Perform DBSCAN clustering."""
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+        return dbscan.fit_predict(features)
+
+    def hierarchical_clustering(self, features: np.ndarray, n_clusters: int = 5) -> np.ndarray:
+        """Perform hierarchical clustering."""
+        clustering = AgglomerativeClustering(n_clusters=n_clusters)
+        return clustering.fit_predict(features)
 
     def reduce_dimensions(self, features: np.ndarray) -> np.ndarray:
-        """
-        Reduce dimensionality for visualization using TensorFlow.
-        
-        Args:
-            features: Feature matrix to reduce
-            
-        Returns:
-            numpy.ndarray: Reduced 2D coordinates
-        """
+        """Reduce dimensionality for visualization using TensorFlow SVD."""
         features_tensor = tf.convert_to_tensor(features, dtype=tf.float32)
-        
-        # Use TensorFlow's SVD for dimensionality reduction
         s, u, _ = tf.linalg.svd(features_tensor)
         reduced = tf.matmul(u[:, :2], tf.linalg.diag(s[:2]))
+        reduced = reduced.numpy()
         
         # Normalize to [-1, 1] range
-        reduced = reduced.numpy()
         min_vals = np.min(reduced, axis=0)
         max_vals = np.max(reduced, axis=0)
-        normalized = (reduced - min_vals) / (max_vals - min_vals + 1e-6) * 2 - 1
-        
-        return normalized
+        return (reduced - min_vals) / (max_vals - min_vals + 1e-6) * 2 - 1
 
-    def cluster_repositories(self, repos: List[GitHubRepo]) -> List[ClusteredRepo]:
-        """
-        Main clustering function that processes repositories and returns clustered results.
+    def get_cluster_label(self, repos: List[GitHubRepo]) -> str:
+        """Generate a label for a cluster based on common characteristics."""
+        languages = [repo.language for repo in repos if repo.language]
+        topics = [topic for repo in repos for topic in repo.topics]
         
-        Args:
-            repos: List of repositories to cluster
-            
-        Returns:
-            List[ClusteredRepo]: Clustered repositories with visualization coordinates
-            
-        Raises:
-            ValueError: If input validation fails
-        """
+        if languages and max(languages.count(lang) for lang in set(languages)) >= len(repos) / 2:
+            # If majority uses same language
+            most_common = max(set(languages), key=languages.count)
+            return f"{most_common} Projects"
+        elif topics:
+            # Most common topic
+            most_common = max(set(topics), key=topics.count)
+            return most_common.title()
+        else:
+            return "Misc Projects"
+
+    def cluster_repositories(
+        self,
+        repos: List[GitHubRepo],
+        algorithm: str = "kmeans",
+        params: Dict = {},
+        features_to_use: List[str] = ["description", "topics", "language", "metrics"]
+    ) -> ClusteringResponse:
+        """Main clustering function."""
         try:
+            start_time = tf.timestamp()
+            
             # Validate input
             self._validate_input(repos)
             
-            # Extract and preprocess features
-            features = self.extract_features(repos)
+            # Extract features
+            features = self.extract_features(repos, features_to_use)
             
-            # Convert to TensorFlow tensor
-            tf_features = tf.convert_to_tensor(features, dtype=tf.float32)
+            # Perform clustering
+            if algorithm == "kmeans":
+                n_clusters = params.get("n_clusters", 5)
+                labels = self.kmeans_clustering(features, n_clusters)
+            elif algorithm == "dbscan":
+                eps = params.get("eps", 0.5)
+                min_samples = params.get("min_samples", 5)
+                labels = self.dbscan_clustering(features, eps, min_samples)
+            elif algorithm == "hierarchical":
+                n_clusters = params.get("n_clusters", 5)
+                labels = self.hierarchical_clustering(features, n_clusters)
+            else:
+                raise ValueError(f"Unknown algorithm: {algorithm}")
             
-            # Perform clustering with TensorFlow optimizations
-            labels, _ = self.kmeans_clustering(tf_features)
-            labels = labels.numpy()
-            
-            # Reduce dimensions for visualization
+            # Get visualization coordinates
             coordinates = self.reduce_dimensions(features)
             
-            # Create response
-            clustered_repos = []
+            # Group repositories by cluster
+            clusters_dict = {}
             for i, repo in enumerate(repos):
-                clustered_repos.append(ClusteredRepo(
-                    repo=repo,
-                    cluster_id=int(labels[i]),
-                    coordinates=(float(coordinates[i, 0]), float(coordinates[i, 1]))
-                ))
+                cluster_id = int(labels[i])
+                if cluster_id not in clusters_dict:
+                    clusters_dict[cluster_id] = []
+                clusters_dict[cluster_id].append(repo)
             
-            return clustered_repos
+            # Create cluster objects
+            clusters = []
+            for cluster_id, cluster_repos in clusters_dict.items():
+                # Skip noise points from DBSCAN
+                if cluster_id != -1:
+                    cluster_coords = coordinates[labels == cluster_id]
+                    clusters.append(Cluster(
+                        id=cluster_id,
+                        label=self.get_cluster_label(cluster_repos),
+                        repositories=cluster_repos,
+                        coordinates=(
+                            float(np.mean(cluster_coords[:, 0])),
+                            float(np.mean(cluster_coords[:, 1]))
+                        )
+                    ))
+            
+            processing_time = (tf.timestamp() - start_time).numpy() * 1000.0  # Convert to ms
+            
+            return ClusteringResponse(
+                status="success",
+                clusters=clusters,
+                processing_time_ms=float(processing_time),
+                error_message=None
+            )
             
         except Exception as e:
-            raise ValueError(f"Clustering failed: {str(e)}")
+            return ClusteringResponse(
+                status="error",
+                clusters=None,
+                processing_time_ms=None,
+                error_message=str(e)
+            )

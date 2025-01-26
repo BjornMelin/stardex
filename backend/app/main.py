@@ -4,13 +4,13 @@ from typing import List
 import time
 from fastapi.responses import JSONResponse
 
-from .models import GitHubRepo, ClusteredRepo, ClusteringRequest
+from .models import GitHubRepo, ClusteringRequest, ClusteringResponse
 from .services.clustering import ClusteringService
 
 app = FastAPI(
     title="Stardex Backend",
     version="0.1.0",
-    description="API for clustering GitHub repositories using TensorFlow"
+    description="API for clustering GitHub repositories"
 )
 
 # Configure CORS
@@ -34,62 +34,73 @@ async def value_error_handler(request: Request, exc: ValueError):
     )
 
 @app.post(
-    "/api/cluster",
-    response_model=List[ClusteredRepo],
-    response_description="List of repositories with cluster assignments and visualization coordinates",
+    "/api/clusters",
+    response_model=ClusteringResponse,
+    response_description="Clustered repositories with visualization data",
     summary="Cluster GitHub repositories",
     description="""
-    Analyzes and clusters GitHub repositories based on their features using TensorFlow.
+    Analyzes and clusters GitHub repositories based on selected features and algorithm.
     
-    The clustering algorithm considers multiple repository metrics including:
-    - Star count
-    - Fork count
-    - Issue engagement
-    - Repository size
-    - Overall activity
-    - Topic diversity
-    - Language presence
+    Available clustering algorithms:
+    - kmeans: K-means clustering (default)
+        Parameters:
+        - n_clusters: Number of clusters (default: 5)
+    - dbscan: DBSCAN clustering
+        Parameters:
+        - eps: Maximum distance between samples (default: 0.5)
+        - min_samples: Minimum samples per cluster (default: 5)
+    - hierarchical: Hierarchical clustering
+        Parameters:
+        - n_clusters: Number of clusters (default: 5)
     
-    Returns the repositories with cluster assignments and 2D coordinates for visualization.
+    Available features:
+    - description: Repository description text
+    - topics: Repository topics
+    - language: Primary programming language
+    - metrics: Numerical metrics (stars, forks, etc.)
+    
+    Returns clustered repositories with cluster assignments and visualization coordinates.
     """
 )
-async def cluster_repositories(request: ClusteringRequest):
+async def cluster_repositories(request: ClusteringRequest) -> ClusteringResponse:
     """
-    Cluster GitHub repositories based on their features.
+    Cluster GitHub repositories based on selected features and algorithm.
     
     Args:
-        request: ClusteringRequest containing list of repositories
+        request: ClusteringRequest containing repositories and clustering options
         
     Returns:
-        List[ClusteredRepo]: Clustered repositories with visualization coordinates
-        
-    Raises:
-        HTTPException: If clustering fails or input is invalid
+        ClusteringResponse: Clustering results with visualization data
     """
-    # Performance monitoring
-    start_time = time.time()
-    
     try:
         # Validate request size
         if len(request.repositories) > 1000:
             raise ValueError("Maximum number of repositories (1000) exceeded")
             
         # Perform clustering
-        clustered_repos = clustering_service.cluster_repositories(request.repositories)
+        response = clustering_service.cluster_repositories(
+            repos=request.repositories,
+            algorithm=request.clustering_algorithm or "kmeans",
+            params=request.algorithm_parameters or {},
+            features_to_use=request.features_to_use or ["description", "topics", "language", "metrics"]
+        )
         
-        # Log performance metrics
-        processing_time = time.time() - start_time
-        print(f"Clustering completed in {processing_time:.2f} seconds for {len(request.repositories)} repositories")
-        
-        return clustered_repos
+        return response
         
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        return ClusteringResponse(
+            status="error",
+            clusters=None,
+            processing_time_ms=None,
+            error_message=str(ve)
+        )
     except Exception as e:
         print(f"Error in clustering endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error during clustering process"
+        return ClusteringResponse(
+            status="error",
+            clusters=None,
+            processing_time_ms=None,
+            error_message="Internal server error during clustering process"
         )
 
 @app.get(
