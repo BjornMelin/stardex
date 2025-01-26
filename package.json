@@ -2,21 +2,22 @@
   "name": "stardex",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
     "dev:backend": "cd backend && poetry run uvicorn app.main:app --reload --port 8000",
-    "dev:frontend": "cd frontend && npm run dev",
-    "build": "concurrently \"npm run build:backend\" \"npm run build:frontend\"",
+    "dev:frontend": "cd frontend && pnpm run dev",
+    "build": "concurrently \"pnpm run build:backend\" \"pnpm run build:frontend\"",
     "build:backend": "cd backend && poetry build",
-    "build:frontend": "cd frontend && npm run build",
-    "lint": "cd frontend && npm run lint",
-    "test": "concurrently \"npm run test:backend\" \"npm run test:frontend\"",
+    "build:frontend": "cd frontend && pnpm run build",
+    "lint": "cd frontend && pnpm run lint",
+    "test": "concurrently \"pnpm run test:backend\" \"pnpm run test:frontend\"",
     "test:backend": "cd backend && poetry run pytest",
-    "test:frontend": "cd frontend && npm run test"
+    "test:frontend": "cd frontend && pnpm run test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
   "workspaces": [
     "frontend"
-  ]
+  ],
+  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
 }
