@@ -22,7 +22,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { searchUsers, githubUsernameSchema } from '@/lib/github';
 import { useGitHubStore } from '@/store/github';
-import { cn } from '@/lib/utils';
 
 interface UserSearchProps {
   variant?: 'default' | 'navbar';
