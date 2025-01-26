@@ -77,3 +77,6 @@ htmlcov/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# repomix
+repomix-output.txt
