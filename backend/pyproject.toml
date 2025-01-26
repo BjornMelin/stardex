@@ -12,6 +12,7 @@ tensorflow = "^2.15.0"
 numpy = "^1.26.0"
 pydantic = "^2.5.0"
 python-dotenv = "^1.0.0"
+scikit-learn = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.0"
