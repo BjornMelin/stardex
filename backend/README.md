@@ -1,10 +1,22 @@
 # Stardex Backend
 
-Backend service for the GitHub Stars Explorer, providing repository clustering using TensorFlow.
+Backend service for the GitHub Stars Explorer, providing advanced repository clustering using scikit-learn.
+
+## Features
+
+- **Unified Clustering Endpoint**: Single API call performs multiple clustering algorithms:
+
+  - K-means clustering for broad grouping of repositories
+  - Hierarchical clustering for detailed relationship analysis
+  - PCA + Hierarchical clustering for improved performance on large datasets
+
+- **Performance Metrics**: Get processing time for each algorithm
+- **Flexible Parameters**: Customize clustering behavior with adjustable parameters
+- **CORS Support**: Built-in support for frontend integration
 
 ## Prerequisites
 
-- Python 3.9, 3.10, or 3.11 (TensorFlow compatibility)
+- Python 3.10 or higher
 - Poetry package manager
 - Virtual environment (recommended)
 
@@ -45,133 +57,134 @@ poetry install --no-root
 
 ```bash
 # Start the FastAPI server with hot reload
-poetry run uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at http://localhost:8000
 
 ## API Documentation
 
-Once the server is running, view the interactive API documentation at:
+### Main Endpoints
+
+#### POST /clustering
+
+Performs all clustering algorithms on the provided repository data.
+
+Request Body:
+
+```json
+{
+  "repositories": [
+    {
+      "id": 1,
+      "name": "example-repo",
+      "description": "An example repository",
+      "language": "Python",
+      "topics": ["machine-learning", "data-science"],
+      ...
+    }
+  ],
+  "kmeans_clusters": 5,
+  "hierarchical_threshold": 1.5,
+  "pca_components": 10
+}
+```
+
+Response:
+
+```json
+{
+  "status": "success",
+  "kmeans_clusters": {
+    "algorithm": "kmeans",
+    "clusters": {
+      "0": [0, 2, 4],
+      "1": [1, 3, 5]
+    },
+    "parameters": {"num_clusters": 5},
+    "processing_time_ms": 150.5
+  },
+  "hierarchical_clusters": {
+    "algorithm": "hierarchical",
+    "clusters": {...},
+    "parameters": {"distance_threshold": 1.5},
+    "processing_time_ms": 200.3
+  },
+  "pca_hierarchical_clusters": {
+    "algorithm": "pca_hierarchical",
+    "clusters": {...},
+    "parameters": {
+      "n_components": 10,
+      "distance_threshold": 1.5
+    },
+    "processing_time_ms": 180.7
+  },
+  "total_processing_time_ms": 531.5
+}
+```
+
+#### GET /health
+
+Health check endpoint returning service status.
+
+For complete API documentation, visit:
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
-
-## Troubleshooting
-
-### Common Installation Issues
-
-1. **TensorFlow Installation Fails**
-
-   ```
-   Error: Unable to find installation candidates for tensorflow-io-gcs-filesystem
-   ```
-
-   Solution:
-
-   - Try installing tensorflow-cpu separately first:
-     ```bash
-     pip install tensorflow-cpu==2.15.0
-     poetry install --no-root
-     ```
-   - If that doesn't work, install dependencies directly with pip:
-     ```bash
-     pip install tensorflow-cpu==2.15.0 fastapi uvicorn numpy pydantic python-dotenv scikit-learn
-     ```
-
-2. **Python Version Compatibility**
-
-   ```
-   Error: Python version not supported
-   ```
-
-   Solution:
-
-   - Ensure you're using Python 3.9-3.11 (check with `python --version`)
-   - If needed, install a compatible Python version and create a new virtual environment
-
-3. **Poetry Lock File Issues**
-
-   ```
-   Error: The lock file is not compatible
-   ```
-
-   Solution:
-
-   ```bash
-   poetry lock --no-update
-   poetry install --no-root
-   ```
-
-4. **Memory Issues During Installation**
-   - If you encounter memory errors during TensorFlow installation:
-
-     ```bash
-     # On Windows, use:
-     set PYTHONOPTS=--no-cache-dir
-     # On macOS/Linux:
-     export PYTHONOPTS=--no-cache-dir
-
-     poetry install --no-root
-     ```
-
-### Environment Issues
-
-1. **SSL Certificate Errors**
-
-   - If you encounter SSL errors:
-     ```bash
-     pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org poetry
-     ```
-
-2. **Path Issues**
-   - After installing Poetry, if the `poetry` command isn't found:
-     - Windows: Restart your terminal
-     - macOS/Linux: Add Poetry to your PATH:
-       ```bash
-       export PATH="$HOME/.local/bin:$PATH"
-       ```
 
 ## Project Structure
 
 ```
 backend/
 ├── app/
-│   ├── main.py          # FastAPI application and routes
-│   ├── models.py        # Pydantic models
-│   └── services/
-│       └── clustering.py # TensorFlow clustering implementation
+│   ├── main.py          # FastAPI application and unified clustering endpoint
+│   ├── models.py        # Pydantic models for request/response
+│   ├── clustering.py    # Clustering implementations using scikit-learn
+│   └── services/        # Additional services (if needed)
 ├── .venv/               # Virtual environment (not in git)
-├── .gitignore          # Git ignore file
-├── pyproject.toml      # Poetry project configuration
+├── pyproject.toml       # Poetry project configuration
 ├── poetry.lock         # Lock file (should be committed)
 └── README.md          # This file
 ```
+
+## Implementation Details
+
+### Clustering Algorithms
+
+1. **K-Means Clustering**
+
+   - Groups repositories into k distinct clusters
+   - Uses TF-IDF vectorization for text data
+   - Configurable number of clusters
+
+2. **Hierarchical Clustering**
+
+   - Creates hierarchical relationships between repositories
+   - Uses Ward's method for linkage
+   - Adjustable distance threshold for cluster formation
+
+3. **PCA + Hierarchical Clustering**
+   - Reduces dimensionality before clustering
+   - Improves performance on large datasets
+   - Configurable number of components
+
+### Text Processing
+
+- Uses TF-IDF vectorization for repository descriptions
+- Handles multiple languages
+- Removes common stop words
 
 ## Development Guidelines
 
 1. **Dependencies**
 
-   - Always use Poetry for managing dependencies
-   - The `poetry.lock` file should be committed to ensure consistent installations
-   - Use `poetry add package-name` to add new dependencies
-   - Use `poetry add -D package-name` for dev dependencies
+   - Use Poetry for managing dependencies
+   - The `poetry.lock` file should be committed
+   - Add new dependencies: `poetry add package-name`
+   - Add dev dependencies: `poetry add -D package-name`
 
-2. **Virtual Environment**
-
-   - Always use a virtual environment
-   - Activate it before running any Python commands
-   - If you need to recreate the virtual environment:
-     ```bash
-     rm -rf .venv
-     python -m venv .venv
-     # Activate virtual environment (see above)
-     poetry install --no-root
-     ```
-
-3. **Code Style**
-   - The project uses black for code formatting
-   - Run formatter before committing:
+2. **Code Style**
+   - Use black for code formatting:
      ```bash
      poetry run black app/
      ```
@@ -180,15 +193,15 @@ backend/
 
 The clustering service is optimized for:
 
-- Large datasets using TensorFlow's efficient operations
-- Memory usage with batch processing
-- CPU utilization with vectorized operations
+- Efficient text vectorization
+- Memory usage with scipy sparse matrices
+- Parallel processing where applicable
 
-For very large datasets, consider:
+For large datasets, consider:
 
-1. Increasing the server's timeout settings
-2. Adjusting the clustering parameters in `app/services/clustering.py`
-3. Using the CPU-only TensorFlow build for better compatibility
+1. Adjusting PCA components to reduce dimensionality
+2. Increasing the hierarchical clustering threshold
+3. Reducing the number of K-means clusters
 
 ## Contributing
 
