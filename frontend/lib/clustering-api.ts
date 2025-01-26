@@ -71,15 +71,15 @@ export const defaultClusteringConfig: ClusteringRequest = {
 export const algorithmDescriptions = {
   kmeans: {
     name: "K-Means Clustering",
-    description: "Groups repositories into distinct clusters based on similarity"
+    description: "Groups repositories into distinct clusters based on feature similarity. Each repository belongs to the cluster with the nearest mean, resulting in partitions that minimize within-cluster distances."
   },
   hierarchical: {
     name: "Hierarchical Clustering",
-    description: "Creates a tree-like structure of repository relationships"
+    description: "Creates a tree-like structure of repository relationships where larger clusters contain smaller, more tightly related groups. The threshold controls how closely related repositories must be to form a cluster."
   },
   pca_hierarchical: {
     name: "PCA + Hierarchical",
-    description: "Reduces complexity before clustering for better results"
+    description: "First reduces repository features to principal components that capture the most important patterns, then performs hierarchical clustering. This can reveal underlying structures that might be hidden in the raw features."
   }
 };
 
