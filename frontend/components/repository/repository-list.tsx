@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 type ViewMode = 'grid' | 'list';
 
 export function RepositoryList() {
-  const { selectedUsers, repos, setRepos, filters } = useGitHubStore();
+  const { selectedUsers, repos, setRepos, filters, shouldFetchRepos } = useGitHubStore();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { toast } = useToast();
 
@@ -35,7 +35,7 @@ export function RepositoryList() {
       );
       return allRepos;
     },
-    enabled: selectedUsers.length > 0,
+    enabled: selectedUsers.length > 0 && shouldFetchRepos,
     retry: (failureCount, error) => {
       if (error instanceof RateLimitError) return false;
       return failureCount < 3;

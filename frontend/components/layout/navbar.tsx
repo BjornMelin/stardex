@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Menu, Sun, Moon, Laptop } from "lucide-react";
+import { Menu, Sun, Moon, Laptop } from "lucide-react";
 import { useTheme } from "next-themes";
-import { UserSearch } from "@/components/user/user-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,11 +37,6 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 ml-auto">
-            {/* Desktop Search */}
-            <div className="hidden md:flex w-64">
-              <UserSearch variant="navbar" />
-            </div>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">

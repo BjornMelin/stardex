@@ -12,6 +12,8 @@ interface GitHubStore {
   clearRepos: () => void;
   filters: FilterCriteria;
   setFilters: (filters: FilterCriteria) => void;
+  shouldFetchRepos: boolean;
+  setShouldFetchRepos: (value: boolean) => void;
 }
 
 export const useGitHubStore = create<GitHubStore>((set) => ({
@@ -41,4 +43,6 @@ export const useGitHubStore = create<GitHubStore>((set) => ({
     sortBy: 'stars',
   },
   setFilters: (filters) => set({ filters }),
+  shouldFetchRepos: false,
+  setShouldFetchRepos: (value) => set({ shouldFetchRepos: value }),
 }));

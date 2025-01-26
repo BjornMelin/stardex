@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useGitHubStore } from '@/store/github';
 
 export default function Home() {
-  const selectedUsers = useGitHubStore((state) => state.selectedUsers);
+  const { selectedUsers, shouldFetchRepos } = useGitHubStore();
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-background/95 to-muted/50">
       {/* Hero Section */}
@@ -43,7 +43,7 @@ export default function Home() {
       {/* Repository List and Features Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-6xl mx-auto space-y-16">
-          {selectedUsers.length > 0 && (
+          {selectedUsers.length > 0 && shouldFetchRepos && (
             <div className="rounded-xl p-6 border relative overflow-hidden">
               <div className="relative">
                 <RepositoryList />
