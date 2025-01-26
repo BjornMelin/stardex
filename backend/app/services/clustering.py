@@ -71,10 +71,10 @@ class ClusteringService:
         feature_matrix = np.array(features, dtype=np.float32)
         return self.scaler.fit_transform(feature_matrix)
 
-    @tf.function
+    @tf.function(reduce_retracing=True)
     def kmeans_clustering(self, features: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         """
-        Perform K-means clustering using TensorFlow.
+        Perform K-means clustering using TensorFlow with optimizations.
         
         Args:
             features: Feature tensor to cluster
@@ -82,14 +82,35 @@ class ClusteringService:
         Returns:
             Tuple containing cluster assignments and centroids
         """
+        # Convert to TensorFlow tensor if needed
+        if not isinstance(features, tf.Tensor):
+            features = tf.convert_to_tensor(features, dtype=tf.float32)
+        
         # Initialize centroids using k-means++ method
         num_points = tf.shape(features)[0]
-        centroid_ids = tf.random.shuffle(tf.range(num_points))[:self.n_clusters]
-        centroids = tf.gather(features, centroid_ids)
+        num_clusters = tf.minimum(self.n_clusters, num_points - 1)
+        
+        # Choose first centroid randomly
+        first_centroid = tf.gather(features, tf.random.uniform([], 0, num_points, dtype=tf.int32))
+        centroids = tf.expand_dims(first_centroid, 0)
+        
+        # Choose remaining centroids using k-means++ algorithm
+        for _ in tf.range(1, num_clusters):
+            # Calculate distances to existing centroids
+            distances = tf.reduce_min(tf.reduce_sum(
+                tf.square(tf.expand_dims(features, 1) - tf.expand_dims(centroids, 0)),
+                axis=2
+            ), axis=1)
+            
+            # Choose next centroid with probability proportional to squared distance
+            probs = distances / tf.reduce_sum(distances)
+            next_centroid_idx = tf.random.categorical(tf.expand_dims(tf.math.log(probs), 0), 1)[0, 0]
+            next_centroid = tf.gather(features, next_centroid_idx)
+            centroids = tf.concat([centroids, tf.expand_dims(next_centroid, 0)], axis=0)
         
         # Optimize clusters
         for _ in tf.range(100):  # Max iterations
-            # Calculate distances to centroids
+            # Calculate distances to centroids using vectorized operations
             distances = tf.reduce_sum(
                 tf.square(tf.expand_dims(features, 1) - tf.expand_dims(centroids, 0)),
                 axis=2
@@ -98,22 +119,22 @@ class ClusteringService:
             # Assign points to nearest centroid
             assignments = tf.argmin(distances, axis=1)
             
-            # Update centroids
+            # Update centroids using TensorFlow's advanced indexing
             new_centroids = tf.zeros_like(centroids)
-            for i in tf.range(self.n_clusters):
+            for i in tf.range(num_clusters):
                 mask = tf.cast(tf.equal(assignments, i), tf.float32)
-                cluster_sum = tf.reduce_sum(
+                masked_sum = tf.reduce_sum(
                     tf.multiply(tf.expand_dims(mask, 1), features),
                     axis=0
                 )
-                count = tf.reduce_sum(mask) + 1e-6  # Avoid division by zero
+                count = tf.maximum(tf.reduce_sum(mask), 1.0)  # Avoid division by zero
                 new_centroids = tf.tensor_scatter_nd_update(
                     new_centroids,
                     [[i]],
-                    [cluster_sum / count]
+                    [masked_sum / count]
                 )
             
-            # Check convergence
+            # Check convergence using reduced operations
             if tf.reduce_all(tf.abs(new_centroids - centroids) < 1e-6):
                 break
                 
@@ -123,7 +144,7 @@ class ClusteringService:
 
     def reduce_dimensions(self, features: np.ndarray) -> np.ndarray:
         """
-        Reduce dimensionality for visualization using PCA-inspired approach.
+        Reduce dimensionality for visualization using TensorFlow.
         
         Args:
             features: Feature matrix to reduce
@@ -131,23 +152,14 @@ class ClusteringService:
         Returns:
             numpy.ndarray: Reduced 2D coordinates
         """
-        # Center the data
-        centered = features - np.mean(features, axis=0)
+        features_tensor = tf.convert_to_tensor(features, dtype=tf.float32)
         
-        # Calculate covariance matrix
-        cov = np.cov(centered.T)
-        
-        # Get eigenvalues and eigenvectors
-        eigenvals, eigenvecs = np.linalg.eigh(cov)
-        
-        # Sort by eigenvalues in descending order
-        idx = np.argsort(eigenvals)[::-1]
-        eigenvecs = eigenvecs[:, idx]
-        
-        # Project onto first two principal components
-        reduced = np.dot(centered, eigenvecs[:, :2])
+        # Use TensorFlow's SVD for dimensionality reduction
+        s, u, _ = tf.linalg.svd(features_tensor)
+        reduced = tf.matmul(u[:, :2], tf.linalg.diag(s[:2]))
         
         # Normalize to [-1, 1] range
+        reduced = reduced.numpy()
         min_vals = np.min(reduced, axis=0)
         max_vals = np.max(reduced, axis=0)
         normalized = (reduced - min_vals) / (max_vals - min_vals + 1e-6) * 2 - 1
@@ -177,8 +189,8 @@ class ClusteringService:
             # Convert to TensorFlow tensor
             tf_features = tf.convert_to_tensor(features, dtype=tf.float32)
             
-            # Perform clustering
-            labels, centroids = self.kmeans_clustering(tf_features)
+            # Perform clustering with TensorFlow optimizations
+            labels, _ = self.kmeans_clustering(tf_features)
             labels = labels.numpy()
             
             # Reduce dimensions for visualization
