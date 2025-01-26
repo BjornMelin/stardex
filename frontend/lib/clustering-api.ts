@@ -1,32 +1,26 @@
 import { GitHubRepo } from "./github";
 
-export interface ClusteredRepo {
-  repo: GitHubRepo;
-  cluster_id: number;
-  coordinates: [number, number];
+export interface ClusterResult {
+  algorithm: string;
+  clusters: { [key: number]: number[] };
+  parameters: { [key: string]: number };
+  processing_time_ms: number;
 }
 
-export interface Cluster {
-  id: number;
-  label?: string;
-  repositories: GitHubRepo[];
-  coordinates?: [number, number];
+export interface ClusteringResponse {
+  status: string;
+  kmeans_clusters?: ClusterResult;
+  hierarchical_clusters?: ClusterResult;
+  pca_hierarchical_clusters?: ClusterResult;
+  error_message?: string;
+  total_processing_time_ms: number;
 }
 
 export interface ClusteringRequest {
   repositories: GitHubRepo[];
-  clustering_algorithm?: "kmeans" | "dbscan" | "hierarchical";
-  algorithm_parameters?: {
-    [key: string]: number | string;
-  };
-  features_to_use?: Array<"description" | "topics" | "language" | "metrics">;
-}
-
-export interface ClusteringResponse {
-  status: "success" | "error";
-  clusters?: Cluster[];
-  processing_time_ms?: number;
-  error_message?: string;
+  kmeans_clusters: number;
+  hierarchical_threshold: number;
+  pca_components: number;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -35,7 +29,7 @@ export async function clusterRepositories(
   request: ClusteringRequest
 ): Promise<ClusteringResponse> {
   try {
-    const response = await fetch(`${API_BASE}/api/clusters`, {
+    const response = await fetch(`${API_BASE}/clustering`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,77 +53,37 @@ export async function clusterRepositories(
     console.error("Error clustering repositories:", error);
     return {
       status: "error",
-      error_message: error instanceof Error ? error.message : "Failed to cluster repositories"
+      error_message: error instanceof Error ? error.message : "Failed to cluster repositories",
+      total_processing_time_ms: 0
     };
   }
 }
 
 // Default clustering configuration
-export const defaultClusteringConfig: Partial<ClusteringRequest> = {
-  clustering_algorithm: "kmeans",
-  algorithm_parameters: {
-    n_clusters: 5
-  },
-  features_to_use: ["description", "topics", "language", "metrics"]
+export const defaultClusteringConfig: ClusteringRequest = {
+  repositories: [],
+  kmeans_clusters: 5,
+  hierarchical_threshold: 1.5,
+  pca_components: 10
 };
 
-// Algorithm parameter configurations
-export const algorithmConfigs = {
+// Algorithm descriptions
+export const algorithmDescriptions = {
   kmeans: {
     name: "K-Means Clustering",
-    parameters: {
-      n_clusters: {
-        type: "number",
-        default: 5,
-        min: 2,
-        max: 20,
-        label: "Number of Clusters"
-      }
-    }
-  },
-  dbscan: {
-    name: "DBSCAN Clustering",
-    parameters: {
-      eps: {
-        type: "number",
-        default: 0.5,
-        min: 0.1,
-        max: 2.0,
-        step: 0.1,
-        label: "Maximum Distance Between Samples"
-      },
-      min_samples: {
-        type: "number",
-        default: 5,
-        min: 2,
-        max: 20,
-        label: "Minimum Samples per Cluster"
-      }
-    }
+    description: "Groups repositories into distinct clusters based on similarity"
   },
   hierarchical: {
     name: "Hierarchical Clustering",
-    parameters: {
-      n_clusters: {
-        type: "number",
-        default: 5,
-        min: 2,
-        max: 20,
-        label: "Number of Clusters"
-      }
-    }
+    description: "Creates a tree-like structure of repository relationships"
+  },
+  pca_hierarchical: {
+    name: "PCA + Hierarchical",
+    description: "Reduces complexity before clustering for better results"
   }
 };
 
-// Available features for clustering
-export const availableFeatures = [
-  { id: "description", label: "Repository Description" },
-  { id: "topics", label: "Repository Topics" },
-  { id: "language", label: "Programming Language" },
-  { id: "metrics", label: "Repository Metrics" }
-] as const;
-
-// Health check function for the backend service
+// Health check function
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/health`);

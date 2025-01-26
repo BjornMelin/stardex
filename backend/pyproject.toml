@@ -6,23 +6,19 @@ authors = ["Bjorn Melin"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.12"  # TensorFlow supports Python 3.9-3.11
-fastapi = "^0.109.0"
-uvicorn = "^0.27.0"
-numpy = ">=1.22.0"  # Required by TensorFlow
-pydantic = "^2.5.0"
-python-dotenv = "^1.0.0"
-scikit-learn = "^1.4.0"
-tensorflow-cpu = "2.15.0"  # Use CPU-only version for better compatibility
-tensorflow-io-gcs-filesystem = "0.31.0"  # Pin to a stable version
-h5py = "^3.10.0"  # Required by TensorFlow
-typing-extensions = ">=4.2.0"  # Required by TensorFlow
+python = ">=3.10,<3.12"
+fastapi = "^0.115.7"
+uvicorn = "^0.34.0"
+numpy = ">=2.2.2"
+pydantic = "^2.10.6"
+python-dotenv = "^1.0.1"
+scikit-learn = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-black = "^23.12.0"
-isort = "^5.13.0"
-mypy = "^1.8.0"
+pytest = "^8.3.4"
+black = "^24.10.0"
+isort = "^5.13.2"
+mypy = "^1.14.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
