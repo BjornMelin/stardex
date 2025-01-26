@@ -60,7 +60,7 @@ poetry install --no-root
 poetry run uvicorn app.main:app --reload --port 8000
 ```
 
-The API will be available at http://localhost:8000
+The API will be available at [http://localhost:8000](http://localhost:8000)
 
 ## API Documentation
 
@@ -129,12 +129,12 @@ Health check endpoint returning service status.
 
 For complete API documentation, visit:
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+- ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ## Project Structure
 
-```
+```plaintext
 backend/
 ├── app/
 │   ├── main.py          # FastAPI application and unified clustering endpoint
@@ -185,6 +185,7 @@ backend/
 
 2. **Code Style**
    - Use black for code formatting:
+
      ```bash
      poetry run black app/
      ```
