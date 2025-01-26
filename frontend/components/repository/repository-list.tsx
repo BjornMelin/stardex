@@ -20,7 +20,7 @@ import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 import { useToast } from "@/hooks/use-toast";
 import { RepositoryFilters } from "./repository-filters";
-import { RepositoryClusters } from "./repository-clusters";
+import RepositoryClusters from "./repository-clusters";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

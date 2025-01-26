@@ -1,162 +1,172 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import * as d3 from "d3";
-import type { Selection, BaseType } from "d3";
-import { GitHubRepo } from "@/lib/github";
-import { ClusteredRepo, clusterRepositories } from "@/lib/clustering-api";
+import { useEffect, useState } from "react";
+import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GitHubRepo } from "@/lib/github";
+import { 
+  clusterRepositories, 
+  ClusteringResponse, 
+  ClusterResult,
+  algorithmDescriptions
+} from "@/lib/clustering-api";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RepositoryClustersProps {
   repositories: GitHubRepo[];
 }
 
-interface TooltipData {
-  pageX: number;
-  pageY: number;
-  repo: GitHubRepo;
+interface ClusterViewProps {
+  result: ClusterResult;
+  repositories: GitHubRepo[];
+  algorithm: string;
 }
 
-export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [clusteredRepos, setClusteredRepos] = useState<ClusteredRepo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+function ClusterView({ result, repositories, algorithm }: ClusterViewProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCluster, setSelectedCluster] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function performClustering() {
-      if (!repositories.length) {
-        setLoading(false);
-        return;
-      }
+  // Convert cluster indices to actual repositories
+  const clusterRepos = Object.entries(result.clusters).map(([id, indices]) => ({
+    id: parseInt(id),
+    repositories: indices.map(idx => repositories[idx])
+  }));
 
-      try {
-        setLoading(true);
-        const clustered = await clusterRepositories(repositories);
-        setClusteredRepos(clustered);
-      } catch (error) {
-        console.error("Clustering error:", error);
-        toast({
-          title: "Clustering Error",
-          description:
-            "Failed to cluster repositories. Please try again later.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
+  const currentCluster = selectedCluster !== null 
+    ? clusterRepos.find(c => c.id === selectedCluster)
+    : null;
 
-    performClustering();
-  }, [repositories, toast]);
+  const filteredRepos = currentCluster?.repositories.filter(repo =>
+    repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
 
-  useEffect(() => {
-    if (!svgRef.current || !clusteredRepos.length || loading) return;
-
-    // Clear previous visualization
-    d3.select(svgRef.current).selectAll("*").remove();
-
-    // Set up SVG dimensions
-    const width = 800;
-    const height = 600;
-    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-
-    // Create SVG
-    const svg = d3
-      .select<SVGSVGElement, unknown>(svgRef.current)
-      .attr("width", width)
-      .attr("height", height);
-
-    // Create scales
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, 1])
-      .range([margin.left, innerWidth]);
-
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, 1])
-      .range([innerHeight, margin.top]);
-
-    // Create color scale for clusters
-    const uniqueClusters = Array.from(
-      new Set(clusteredRepos.map((r: ClusteredRepo) => r.cluster_id))
-    ).map(String);
-
-    const colorScale = d3
-      .scaleOrdinal<string>()
-      .domain(uniqueClusters)
-      .range(d3.schemeCategory10);
-
-    // Create tooltip
-    const tooltip = d3
-      .select<HTMLDivElement, unknown>("body")
-      .append("div")
-      .attr("class", "absolute hidden p-2 bg-white border rounded shadow-lg")
-      .style("pointer-events", "none") as Selection<
-      HTMLDivElement,
-      unknown,
-      HTMLElement,
-      unknown
-    >;
-
-    // Draw points
-    const points = svg
-      .selectAll<SVGCircleElement, ClusteredRepo>("circle")
-      .data(clusteredRepos)
-      .enter()
-      .append("circle")
-      .attr("cx", (d: ClusteredRepo) => xScale(d.coordinates[0]))
-      .attr("cy", (d: ClusteredRepo) => yScale(d.coordinates[1]))
-      .attr("r", 6)
-      .attr("fill", (d: ClusteredRepo) => colorScale(String(d.cluster_id)))
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1)
-      .style("cursor", "pointer");
-
-    // Add hover interactions
-    points
-      .on("mouseover", (event: MouseEvent, d: ClusteredRepo) => {
-        const target = event.currentTarget as SVGCircleElement;
-        d3.select(target).transition().duration(200).attr("r", 8);
-
-        tooltip
-          .html(
-            `
-            <div class="space-y-1">
-              <p class="font-semibold">${d.repo.name}</p>
-              <p class="text-sm text-gray-600">${
-                d.repo.description || "No description"
-              }</p>
-              <p class="text-xs text-gray-500">
-                ⭐ ${d.repo.stargazers_count.toLocaleString()} · 
-                🔀 ${d.repo.forks_count.toLocaleString()}
-              </p>
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-row gap-4">
+        <div className="w-1/4 space-y-4">
+          <div className="font-medium">{algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]?.name}</div>
+          <div className="text-sm text-muted-foreground">
+            {algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]?.description}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Processing time: {result.processing_time_ms.toFixed(2)}ms
+          </div>
+          <ScrollArea className="h-[400px]">
+            <div className="space-y-2">
+              {clusterRepos.map((cluster) => (
+                <Button
+                  key={cluster.id}
+                  variant={selectedCluster === cluster.id ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => setSelectedCluster(cluster.id)}
+                >
+                  <span>Cluster {cluster.id + 1}</span>
+                  <Badge variant="secondary" className="ml-auto">
+                    {cluster.repositories.length}
+                  </Badge>
+                </Button>
+              ))}
             </div>
-          `
-          )
-          .style("left", `${event.pageX + 10}px`)
-          .style("top", `${event.pageY + 10}px`)
-          .classed("hidden", false);
-      })
-      .on("mouseout", (event: MouseEvent) => {
-        const target = event.currentTarget as SVGCircleElement;
-        d3.select(target).transition().duration(200).attr("r", 6);
+          </ScrollArea>
+        </div>
+        <div className="w-3/4 space-y-4">
+          <div className="flex items-center gap-4">
+            <Input
+              placeholder="Search in cluster..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+            {currentCluster && (
+              <div className="text-sm text-muted-foreground">
+                {filteredRepos.length} repositories
+              </div>
+            )}
+          </div>
+          <ScrollArea className="h-[400px]">
+            <div className="space-y-2">
+              {currentCluster ? (
+                filteredRepos.map((repo) => (
+                  <Card key={repo.id} className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <a
+                          href={repo.html_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium hover:underline"
+                        >
+                          {repo.name}
+                        </a>
+                        <Badge variant="secondary">
+                          ⭐ {repo.stargazers_count.toLocaleString()}
+                        </Badge>
+                      </div>
+                      {repo.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {repo.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {repo.language && (
+                          <Badge variant="outline">{repo.language}</Badge>
+                        )}
+                        {repo.topics.slice(0, 3).map((topic) => (
+                          <Badge key={topic} variant="secondary">
+                            {topic}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  Select a cluster to view repositories
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        tooltip.classed("hidden", true);
-      })
-      .on("click", (_: MouseEvent, d: ClusteredRepo) => {
-        window.open(d.repo.html_url, "_blank");
+export default function RepositoryClusters({ repositories }: RepositoryClustersProps) {
+  const [clusteringResults, setClusteringResults] = useState<ClusteringResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    kmeans_clusters: 5,
+    hierarchical_threshold: 1.5,
+    pca_components: 10
+  });
+
+  useEffect(() => {
+    if (repositories.length > 0) {
+      performClustering();
+    }
+  }, [repositories, settings]);
+
+  async function performClustering() {
+    setLoading(true);
+    try {
+      const response = await clusterRepositories({
+        repositories,
+        ...settings
       });
-
-    // Cleanup
-    return () => {
-      tooltip.remove();
-    };
-  }, [clusteredRepos, loading]);
+      setClusteringResults(response);
+    } catch (error) {
+      console.error("Clustering error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -168,20 +178,99 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     );
   }
 
-  if (!repositories.length) {
-    return (
-      <Card className="p-4">
-        <div className="flex items-center justify-center h-[600px] text-gray-500">
-          No repositories to display
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-center">
-        <svg ref={svgRef} />
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium">K-Means Clusters</label>
+            <Slider
+              value={[settings.kmeans_clusters]}
+              min={2}
+              max={10}
+              step={1}
+              onValueChange={([value]) => 
+                setSettings(s => ({ ...s, kmeans_clusters: value }))
+              }
+              className="mt-2"
+            />
+            <div className="text-sm text-muted-foreground mt-1">
+              {settings.kmeans_clusters} clusters
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Hierarchical Threshold</label>
+            <Slider
+              value={[settings.hierarchical_threshold]}
+              min={0.5}
+              max={3}
+              step={0.1}
+              onValueChange={([value]) => 
+                setSettings(s => ({ ...s, hierarchical_threshold: value }))
+              }
+              className="mt-2"
+            />
+            <div className="text-sm text-muted-foreground mt-1">
+              Threshold: {settings.hierarchical_threshold}
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">PCA Components</label>
+            <Slider
+              value={[settings.pca_components]}
+              min={2}
+              max={20}
+              step={1}
+              onValueChange={([value]) => 
+                setSettings(s => ({ ...s, pca_components: value }))
+              }
+              className="mt-2"
+            />
+            <div className="text-sm text-muted-foreground mt-1">
+              {settings.pca_components} components
+            </div>
+          </div>
+        </div>
+
+        {clusteringResults && clusteringResults.status === "success" && (
+          <Tabs defaultValue="kmeans">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="kmeans">K-Means</TabsTrigger>
+              <TabsTrigger value="hierarchical">Hierarchical</TabsTrigger>
+              <TabsTrigger value="pca">PCA + Hierarchical</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="kmeans" className="mt-4">
+              {clusteringResults.kmeans_clusters && (
+                <ClusterView
+                  result={clusteringResults.kmeans_clusters}
+                  repositories={repositories}
+                  algorithm="kmeans"
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="hierarchical" className="mt-4">
+              {clusteringResults.hierarchical_clusters && (
+                <ClusterView
+                  result={clusteringResults.hierarchical_clusters}
+                  repositories={repositories}
+                  algorithm="hierarchical"
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="pca" className="mt-4">
+              {clusteringResults.pca_hierarchical_clusters && (
+                <ClusterView
+                  result={clusteringResults.pca_hierarchical_clusters}
+                  repositories={repositories}
+                  algorithm="pca_hierarchical"
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </Card>
   );
