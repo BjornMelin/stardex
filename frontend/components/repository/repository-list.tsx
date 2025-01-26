@@ -1,31 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Star,
-  Calendar,
-  Code,
-  BookOpen,
-  ExternalLink,
-  LayoutGrid,
-  List,
-} from "lucide-react";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { BookOpen, Star } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 import { useToast } from "@/hooks/use-toast";
-import { RepositoryFilters } from "./repository-filters";
-import { RepositoryClusters } from "./repository-clusters";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-type ViewMode = "grid" | "list";
+import { RepositoryFilters } from "@/components/repository/repository-filters";
+import { RepositoryClusters } from "@/components/repository/repository-clusters";
+import { RepositoryCard } from "@/components/repository/repository-card";
+import { RepositoryViewToggle } from "@/components/repository/repository-view-toggle";
+import { RepositoryPagination } from "@/components/repository/repository-pagination";
+import {
+  RepositoryLoading,
+  RepositoryEmptyState,
+} from "@/components/repository/repository-loading";
 
 export function RepositoryList() {
   const {
@@ -39,7 +30,7 @@ export function RepositoryList() {
     getFilteredAndSortedRepos,
     getCurrentPageRepos,
   } = useGitHubStore();
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery({
@@ -98,15 +89,13 @@ export function RepositoryList() {
     }
   }, [error, toast]);
 
-  const currentPageRepos = useGitHubStore((state) => state.getCurrentPageRepos());
+  const currentPageRepos = useGitHubStore((state) =>
+    state.getCurrentPageRepos()
+  );
   const allRepos = useGitHubStore((state) => state.getFilteredAndSortedRepos());
 
   if (selectedUsers.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground">
-        Search and select GitHub users to see their starred repositories
-      </div>
-    );
+    return <RepositoryEmptyState />;
   }
 
   return (
@@ -129,172 +118,32 @@ export function RepositoryList() {
               <div className="flex-1">
                 <RepositoryFilters />
               </div>
-              <div className="flex items-center border rounded-md">
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                  className="rounded-r-none"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  <span className="sr-only">Grid view</span>
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                  className="rounded-l-none"
-                >
-                  <List className="h-4 w-4" />
-                  <span className="sr-only">List view</span>
-                </Button>
-              </div>
+              <RepositoryViewToggle
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
             </div>
 
             {isLoading ? (
-              <div className="h-[600px] rounded-md border flex items-center justify-center">
-                <div
-                  className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"
-                  role="status"
-                >
-                  <span className="sr-only">Loading...</span>
-                </div>
-              </div>
+              <RepositoryLoading />
             ) : (
               <ScrollArea className="h-[600px] rounded-md border">
                 <div className="p-4 space-y-4">
                   {currentPageRepos.map((repo: GitHubRepo) => (
-                    <Card
+                    <RepositoryCard
                       key={repo.id}
-                      className={cn(
-                        "p-4 hover:bg-muted/50 transition-colors",
-                        viewMode === "list" && "p-3"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "space-y-4",
-                          viewMode === "list" && "flex items-center gap-4"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex items-start gap-4",
-                            viewMode === "list" && "flex-1 min-w-0"
-                          )}
-                        >
-                          <Avatar
-                            className={cn(
-                              "h-12 w-12 rounded-lg",
-                              viewMode === "list" && "h-10 w-10"
-                            )}
-                          >
-                            <AvatarImage
-                              src={repo.owner.avatar_url}
-                              alt={repo.owner.login}
-                            />
-                            <AvatarFallback>
-                              {repo.owner.login[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="space-y-1">
-                                <h3
-                                  className={cn(
-                                    "font-semibold leading-none",
-                                    viewMode === "list" && "text-sm"
-                                  )}
-                                >
-                                  <a
-                                    href={repo.html_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="hover:underline inline-flex items-center gap-2"
-                                  >
-                                    {repo.full_name}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </h3>
-                                {repo.description && viewMode === "grid" && (
-                                  <p className="text-sm text-muted-foreground line-clamp-2">
-                                    {repo.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                                <Star className="h-4 w-4 text-yellow-500" />
-                                {repo.stargazers_count.toLocaleString()}
-                              </div>
-                            </div>
-                            <div
-                              className={cn(
-                                "mt-4 flex flex-wrap gap-2",
-                                viewMode === "list" && "mt-1"
-                              )}
-                            >
-                              {repo.language && (
-                                <Badge variant="secondary" className="gap-1">
-                                  <Code className="h-3 w-3" />
-                                  {repo.language}
-                                </Badge>
-                              )}
-                              <Badge variant="outline" className="gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Updated{" "}
-                                {format(
-                                  new Date(repo.updated_at),
-                                  "MMM d, yyyy"
-                                )}
-                              </Badge>
-                              {viewMode === "grid" &&
-                                repo.topics.map((topic: string) => (
-                                  <Badge
-                                    key={topic}
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {topic}
-                                  </Badge>
-                                ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
+                      repo={repo}
+                      viewMode={viewMode}
+                    />
                   ))}
                 </div>
-                <div className="sticky bottom-0 flex items-center justify-between gap-2 bg-background/95 backdrop-blur p-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Page {currentPage} of{" "}
-                    {Math.ceil(
-                      getFilteredAndSortedRepos().length / itemsPerPage
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1 || isLoading}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={
-                        currentPage >=
-                          Math.ceil(
-                            getFilteredAndSortedRepos().length / itemsPerPage
-                          ) || isLoading
-                      }
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                <RepositoryPagination
+                  currentPage={currentPage}
+                  totalItems={getFilteredAndSortedRepos().length}
+                  itemsPerPage={itemsPerPage}
+                  isLoading={isLoading}
+                  onPageChange={setCurrentPage}
+                />
               </ScrollArea>
             )}
           </div>
