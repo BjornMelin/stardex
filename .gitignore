@@ -58,6 +58,9 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
+.pytest_cache/
+htmlcov/
+*.egg-info/
 
 # IDEs and editors
 .idea/
@@ -74,3 +77,6 @@ coverage.xml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# repomix
+repomix-output.txt
