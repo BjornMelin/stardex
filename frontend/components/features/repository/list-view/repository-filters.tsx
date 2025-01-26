@@ -57,7 +57,7 @@ export function RepositoryFilters() {
   );
 
   const handleFilterChange = useCallback(
-    (key: keyof FilterCriteria, value: any) => {
+    <K extends keyof FilterCriteria>(key: K, value: FilterCriteria[K]) => {
       setFilters({ ...filters, [key]: value });
     },
     [filters, setFilters]
@@ -153,7 +153,7 @@ export function RepositoryFilters() {
                       className="cursor-pointer"
                       onClick={() => {
                         const newTopics = filters.topics.includes(topic)
-                          ? filters.topics.filter((t) => t !== topic)
+                          ? filters.topics.filter((t: string) => t !== topic)
                           : [...filters.topics, topic];
                         handleFilterChange("topics", newTopics);
                       }}

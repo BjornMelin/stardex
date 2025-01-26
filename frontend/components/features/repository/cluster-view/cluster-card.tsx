@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GitHubRepo } from "@/lib/github";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { RepositoryCard } from "../shared/repository-card";
 
 interface ClusterCardProps {
   cluster: {
@@ -120,38 +121,7 @@ export function ClusterCard({
             )}
             <div className="space-y-2">
               {cluster.repositories.map((repo) => (
-                <Card key={repo.id} className="p-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <a
-                        href={repo.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium hover:underline"
-                      >
-                        {repo.name}
-                      </a>
-                      <Badge variant="secondary">
-                        ⭐ {repo.stargazers_count.toLocaleString()}
-                      </Badge>
-                    </div>
-                    {repo.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {repo.description}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {repo.language && (
-                        <Badge variant="outline">{repo.language}</Badge>
-                      )}
-                      {repo.topics.slice(0, 3).map((topic) => (
-                        <Badge key={topic} variant="secondary">
-                          {topic}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
+                <RepositoryCard key={repo.id} repo={repo} viewMode="list" />
               ))}
             </div>
           </div>

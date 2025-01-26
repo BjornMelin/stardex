@@ -8,15 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 import { useToast } from "@/hooks/use-toast";
-import { RepositoryFilters } from "@/components/repository/repository-filters";
-import { RepositoryClusters } from "@/components/repository/repository-clusters";
-import { RepositoryCard } from "@/components/repository/repository-card";
-import { RepositoryViewToggle } from "@/components/repository/repository-view-toggle";
-import { RepositoryPagination } from "@/components/repository/repository-pagination";
+import { RepositoryFilters } from "@/components/features/repository/list-view/repository-filters";
+import { RepositoryClusters } from "@/components/features/repository/shared/repository-clusters";
+import { RepositoryCard } from "@/components/features/repository/shared/repository-card";
+import { RepositoryViewToggle } from "@/components/features/repository/list-view/repository-view-toggle";
+import { RepositoryPagination } from "@/components/features/repository/list-view/repository-pagination";
 import {
   RepositoryLoading,
   RepositoryEmptyState,
-} from "@/components/repository/repository-loading";
+} from "@/components/features/repository/list-view/repository-loading";
 
 export function RepositoryList() {
   const {

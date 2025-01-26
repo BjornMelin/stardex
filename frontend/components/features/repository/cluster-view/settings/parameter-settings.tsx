@@ -1,42 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Slider } from "@/components/ui/slider";
+import { ClusterParameterSettings } from "@/lib/types/clustering";
+import {
+  CLUSTERING_HELP_TEXT,
+  CLUSTERING_CONFIG,
+} from "@/lib/constants/clustering";
 
-interface ClusterSettingsProps {
-  settings: {
-    kmeans_clusters: number;
-    hierarchical_threshold: number;
-    pca_components: number;
-  };
-  onSettingsChange: (newSettings: {
-    kmeans_clusters: number;
-    hierarchical_threshold: number;
-    pca_components: number;
-  }) => void;
+interface ParameterSettingsProps {
+  settings: ClusterParameterSettings;
+  onSettingsChange: (settings: ClusterParameterSettings) => void;
 }
 
-export function ClusterSettings({
+export function ParameterSettings({
   settings,
   onSettingsChange,
-}: ClusterSettingsProps) {
-  // Local state for visual updates during sliding
+}: ParameterSettingsProps) {
   const [localSettings, setLocalSettings] = useState(settings);
-
-  // Keep local state in sync with props
-  useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
 
   return (
     <div className="grid grid-cols-3 gap-4">
       <div>
-        <label className="text-sm font-medium">K-Means Clusters</label>
+        <label className="text-sm font-medium">
+          {CLUSTERING_HELP_TEXT.settings.kmeans.title}
+        </label>
         <Slider
           value={[localSettings.kmeans_clusters]}
-          min={2}
-          max={10}
-          step={1}
+          min={CLUSTERING_CONFIG.kmeans.min}
+          max={CLUSTERING_CONFIG.kmeans.max}
+          step={CLUSTERING_CONFIG.kmeans.step}
           onValueChange={([value]) =>
             setLocalSettings({ ...localSettings, kmeans_clusters: value })
           }
@@ -50,14 +43,19 @@ export function ClusterSettings({
         </div>
       </div>
       <div>
-        <label className="text-sm font-medium">Hierarchical Threshold</label>
+        <label className="text-sm font-medium">
+          {CLUSTERING_HELP_TEXT.settings.hierarchical.title}
+        </label>
         <Slider
           value={[localSettings.hierarchical_threshold]}
-          min={0.5}
-          max={3}
-          step={0.1}
+          min={CLUSTERING_CONFIG.hierarchical.min}
+          max={CLUSTERING_CONFIG.hierarchical.max}
+          step={CLUSTERING_CONFIG.hierarchical.step}
           onValueChange={([value]) =>
-            setLocalSettings({ ...localSettings, hierarchical_threshold: value })
+            setLocalSettings({
+              ...localSettings,
+              hierarchical_threshold: value,
+            })
           }
           onValueCommit={([value]) =>
             onSettingsChange({ ...settings, hierarchical_threshold: value })
@@ -69,12 +67,14 @@ export function ClusterSettings({
         </div>
       </div>
       <div>
-        <label className="text-sm font-medium">PCA Components</label>
+        <label className="text-sm font-medium">
+          {CLUSTERING_HELP_TEXT.settings.pca.title}
+        </label>
         <Slider
           value={[localSettings.pca_components]}
-          min={2}
-          max={20}
-          step={1}
+          min={CLUSTERING_CONFIG.pca.min}
+          max={CLUSTERING_CONFIG.pca.max}
+          step={CLUSTERING_CONFIG.pca.step}
           onValueChange={([value]) =>
             setLocalSettings({ ...localSettings, pca_components: value })
           }
