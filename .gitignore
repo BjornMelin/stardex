@@ -78,5 +78,8 @@ htmlcov/
 ehthumbs.db
 Thumbs.db
 
+# cdk
+cdk.out
+
 # repomix
 repomix-output.txt
