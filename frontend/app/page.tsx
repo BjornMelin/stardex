@@ -1,7 +1,7 @@
 "use client";
 
-import { UserSearch } from "@/components/user/user-search";
-import { RepositoryList } from "@/components/repository/repository-list";
+import { UserSearch } from "@/components/features/user/user-search";
+import { RepositoryList } from "@/components/features/repository/list-view/repository-list";
 import { Search, GitBranch, Boxes } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGitHubStore } from "@/store/github";

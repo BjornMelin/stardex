@@ -11,18 +11,21 @@ const REPO_OWNER = "bjornmelin";
 const REPO_NAME = "stardex";
 
 async function createGitHubDiscussion(feedback: string) {
-  const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/discussions`, {
-    method: "POST",
-    headers: {
-      "Authorization": `token ${GITHUB_TOKEN}`,
-      "Accept": "application/vnd.github.v3+json",
-    },
-    body: JSON.stringify({
-      title: "User Feedback",
-      body: feedback,
-      category_id: "DIC_kwDOLXXXXXXX", // Replace with your discussion category ID
-    }),
-  });
+  const response = await fetch(
+    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/discussions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+      body: JSON.stringify({
+        title: "User Feedback",
+        body: feedback,
+        category_id: "DIC_kwDOLXXXXXXX", // Replace with your discussion category ID
+      }),
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to create discussion");
@@ -44,7 +47,8 @@ export default function FeedbackPage() {
       await createGitHubDiscussion(feedback);
       toast({
         title: "Feedback Submitted",
-        description: "Thank you for your feedback! It has been posted to our GitHub Discussions.",
+        description:
+          "Thank you for your feedback! It has been posted to our GitHub Discussions.",
       });
       setFeedback("");
     } catch (error) {
@@ -78,10 +82,7 @@ export default function FeedbackPage() {
                 className="min-h-[200px]"
                 disabled={isSubmitting}
               />
-              <Button 
-                type="submit" 
-                disabled={!feedback.trim() || isSubmitting}
-              >
+              <Button type="submit" disabled={!feedback.trim() || isSubmitting}>
                 {isSubmitting ? "Submitting..." : "Submit Feedback"}
               </Button>
             </form>

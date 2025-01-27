@@ -4,7 +4,7 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-13-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15-FF6F00?style=flat-square&logo=tensorflow)](https://www.tensorflow.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3.9-3776AB?style=flat-square&logo=python)](https://www.python.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
@@ -51,7 +51,7 @@ Stardex helps you explore and understand your GitHub starred repositories throug
 
 - **Backend**
   - FastAPI for REST API
-  - TensorFlow for ML operations
+  - scikit-learn for ML operations
   - Poetry for dependency management
   - Pydantic for data validation
 
@@ -67,11 +67,14 @@ Stardex helps you explore and understand your GitHub starred repositories throug
 
 ### AI Clustering
 
-- TensorFlow-powered clustering
-- Feature extraction from repository metadata
-- Automatic cluster size determination
-- Similarity-based grouping
-- Real-time cluster updates
+- Multi-algorithm clustering approach:
+  - K-means for broad repository grouping
+  - Hierarchical clustering for detailed relationships
+  - PCA + Hierarchical clustering for large datasets
+- TF-IDF vectorization for text analysis
+- Configurable clustering parameters
+- Performance metrics tracking
+- Efficient processing of large datasets
 
 ### Visualization
 
@@ -97,9 +100,10 @@ The application is structured as a monorepo with two main services:
 
 - Located in `/backend`
 - Built with FastAPI and Python
-- Handles repository clustering using TensorFlow
+- Implements advanced clustering using scikit-learn
 - Provides RESTful API endpoints
-- Implements efficient data processing and validation
+- Efficient data processing with sparse matrices
+- Parallel processing capabilities
 
 ## 🚀 Getting Started
 
@@ -208,19 +212,21 @@ The clustering process follows these steps:
 
 1. 📊 **Feature Extraction**
 
-   - Star count, forks, issues
-   - Repository size and activity
-   - Language and topic analysis
+   - TF-IDF vectorization for text data
+   - Repository metadata processing
+   - Language and topic encoding
 
 2. 📉 **Dimensionality Reduction**
 
-   - t-SNE like approach
-   - Preserves repository relationships
+   - PCA for high-dimensional data
+   - Configurable number of components
+   - Efficient sparse matrix operations
 
 3. 🎯 **Clustering**
 
-   - DBSCAN algorithm
-   - Automatic cluster detection
+   - K-means for initial grouping
+   - Hierarchical clustering with Ward linkage
+   - PCA-enhanced hierarchical clustering for large datasets
 
 4. 🎨 **Visualization**
    - Interactive D3.js rendering
@@ -248,8 +254,9 @@ The clustering process follows these steps:
 
 ### ⚡ Backend Optimizations
 
-- Efficient tensor operations
-- Smart memory management
+- Efficient sparse matrix operations
+- Parallel processing capabilities
+- Memory-optimized data structures
 - Request validation & caching
 
 ### 🚀 Frontend Optimizations
