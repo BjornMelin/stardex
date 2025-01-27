@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import time
-from typing import List
+from typing import List, Tuple
 
 from app.models import ClusteringRequest, ClusteringResponse, ClusterResult
 from app.clustering import (
@@ -25,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     """Handle ValueError exceptions."""
@@ -33,14 +32,26 @@ async def value_error_handler(request: Request, exc: ValueError):
         status="error", error_message=str(exc), total_processing_time_ms=0
     )
 
-
-def extract_repo_descriptions(repositories: List[dict]) -> List[str]:
-    """Extract descriptions from repositories, handling None values."""
-    return [
-        repo.description or repo.name  # Use name if description is None
-        for repo in repositories
-    ]
-
+def extract_repo_data(repositories: List[dict]) -> Tuple[List[str], List[str]]:
+    """
+    Extract descriptions and READMEs from repositories.
+    
+    Args:
+        repositories: List of repository objects
+        
+    Returns:
+        Tuple[List[str], List[str]]: Lists of descriptions and README contents
+    """
+    descriptions = []
+    readmes = []
+    
+    for repo in repositories:
+        # Use name if description is None
+        descriptions.append(repo.description or repo.name)
+        # Add README content if available
+        readmes.append(repo.readme_content or "")
+        
+    return descriptions, readmes
 
 @app.post("/clustering", response_model=ClusteringResponse)
 def perform_all_clustering(request: ClusteringRequest):
@@ -55,14 +66,14 @@ def perform_all_clustering(request: ClusteringRequest):
     Each algorithm runs independently and their results are combined in the response.
     """
     start_time = time.time()
-    descriptions = extract_repo_descriptions(request.repositories)
+    descriptions, readmes = extract_repo_data(request.repositories)
 
     response = ClusteringResponse(status="success", total_processing_time_ms=0)
 
     try:
         # Perform K-means clustering
         kmeans_start = time.time()
-        kmeans_clusters = perform_kmeans(descriptions, request.kmeans_clusters)
+        kmeans_clusters = perform_kmeans(descriptions, request.kmeans_clusters, readmes)
         kmeans_time = (time.time() - kmeans_start) * 1000
 
         response.kmeans_clusters = ClusterResult(
@@ -75,7 +86,9 @@ def perform_all_clustering(request: ClusteringRequest):
         # Perform hierarchical clustering
         hierarchical_start = time.time()
         hierarchical_clusters = perform_hierarchical(
-            descriptions, distance_threshold=request.hierarchical_threshold
+            descriptions,
+            distance_threshold=request.hierarchical_threshold,
+            readmes=readmes
         )
         hierarchical_time = (time.time() - hierarchical_start) * 1000
 
@@ -92,6 +105,7 @@ def perform_all_clustering(request: ClusteringRequest):
             descriptions,
             n_components=request.pca_components,
             distance_threshold=request.hierarchical_threshold,
+            readmes=readmes
         )
         pca_time = (time.time() - pca_start) * 1000
 
@@ -117,7 +131,6 @@ def perform_all_clustering(request: ClusteringRequest):
             total_processing_time_ms=(time.time() - start_time) * 1000,
         )
 
-
 @app.get(
     "/health",
     summary="Health check endpoint",
@@ -131,7 +144,6 @@ async def health_check():
         "timestamp": time.time(),
         "clustering_service": "available",
     }
-
 
 if __name__ == "__main__":
     import uvicorn

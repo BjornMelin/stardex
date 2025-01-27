@@ -32,6 +32,7 @@ export interface GitHubRepo {
     avatar_url: string;
   };
   updated_at: string;
+  readme_content?: string | null;
 }
 
 export interface GitHubList {
@@ -44,6 +45,9 @@ export interface GitHubList {
 }
 
 const GITHUB_API_BASE = "https://api.github.com";
+
+// Default to environment variable, fallback to empty string
+const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN || '';
 
 export class RateLimitError extends Error {
   constructor(message: string, public resetTime: Date) {
@@ -63,19 +67,34 @@ async function fetchWithRetry(
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
+      const headers = new Headers({
+        'Accept': 'application/vnd.github.v3+json',
+        ...options.headers as Record<string, string>,
+      });
+
+      // Add authorization header if token is available
+      if (GITHUB_TOKEN) {
+        headers.set('Authorization', `token ${GITHUB_TOKEN}`);
+      }
+
       const response = await fetch(url, {
         ...options,
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          ...options.headers,
-        },
+        headers,
       });
 
       if (response.status === 403) {
+        const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
         const resetTime = new Date(
           Number(response.headers.get("x-ratelimit-reset")) * 1000
         );
-        throw new RateLimitError("Rate limit exceeded", resetTime);
+        
+        if (rateLimitRemaining === '0') {
+          throw new RateLimitError(
+            `Rate limit exceeded. Resets at ${resetTime.toLocaleTimeString()}`,
+            resetTime
+          );
+        }
+        throw new Error(`GitHub API error: ${response.statusText}`);
       }
 
       if (!response.ok) {
@@ -93,6 +112,26 @@ async function fetchWithRetry(
   }
 
   throw new Error("Failed after retries");
+}
+
+async function fetchReadmeContent(repo: GitHubRepo): Promise<string | null> {
+  try {
+    const response = await fetchWithRetry(
+      `${GITHUB_API_BASE}/repos/${repo.full_name}/readme`
+    );
+    const data = await response.json();
+    
+    // GitHub returns README content as base64 encoded
+    const content = data.content;
+    if (!content) return null;
+    
+    // Decode base64 content
+    const decoded = atob(content.replace(/\n/g, ''));
+    return decoded;
+  } catch (error) {
+    console.warn(`Failed to fetch README for ${repo.full_name}:`, error);
+    return null;
+  }
 }
 
 export async function searchUsers(query: string): Promise<GitHubUser[]> {
@@ -130,7 +169,15 @@ export async function getStarredRepos(username: string): Promise<GitHubRepo[]> {
       const repos = await response.json();
       if (!repos.length) break;
 
-      allRepos.push(...repos);
+      // Fetch README content for each repository
+      const reposWithReadme = await Promise.all(
+        repos.map(async (repo: GitHubRepo) => {
+          const readme = await fetchReadmeContent(repo);
+          return { ...repo, readme_content: readme };
+        })
+      );
+
+      allRepos.push(...reposWithReadme);
       page++;
 
       if (repos.length < perPage) break;

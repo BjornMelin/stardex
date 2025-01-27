@@ -17,6 +17,7 @@ class GitHubRepo(BaseModel):
     topics: List[str]
     owner: dict
     updated_at: str
+    readme_content: Optional[str] = Field(None, description="Content of the repository's README file")
 
 
 class ClusteringRequest(BaseModel):
