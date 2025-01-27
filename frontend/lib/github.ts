@@ -45,6 +45,9 @@ export interface GitHubList {
 
 const GITHUB_API_BASE = "https://api.github.com";
 
+// Default to environment variable, fallback to empty string
+const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN || '';
+
 export class RateLimitError extends Error {
   constructor(message: string, public resetTime: Date) {
     super(message);
@@ -63,19 +66,34 @@ async function fetchWithRetry(
 ): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     try {
+      const headers = new Headers({
+        'Accept': 'application/vnd.github.v3+json',
+        ...options.headers as Record<string, string>,
+      });
+
+      // Add authorization header if token is available
+      if (GITHUB_TOKEN) {
+        headers.set('Authorization', `token ${GITHUB_TOKEN}`);
+      }
+
       const response = await fetch(url, {
         ...options,
-        headers: {
-          Accept: "application/vnd.github.v3+json",
-          ...options.headers,
-        },
+        headers,
       });
 
       if (response.status === 403) {
+        const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
         const resetTime = new Date(
           Number(response.headers.get("x-ratelimit-reset")) * 1000
         );
-        throw new RateLimitError("Rate limit exceeded", resetTime);
+
+        if (rateLimitRemaining === '0') {
+          throw new RateLimitError(
+            `Rate limit exceeded. Resets at ${resetTime.toLocaleTimeString()}`,
+            resetTime
+          );
+        }
+        throw new Error(`GitHub API error: ${response.statusText}`);
       }
 
       if (!response.ok) {
