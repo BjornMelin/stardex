@@ -1,0 +1,114 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # Required for AWS OIDC
+  contents: read    # Required to checkout repository
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install CDK dependencies
+        working-directory: infrastructure
+        run: npm install
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Bundle Lambda function
+        working-directory: infrastructure
+        run: |
+          chmod +x scripts/bundle-lambda.sh
+          ./scripts/bundle-lambda.sh
+
+      - name: Deploy CDK stacks
+        working-directory: infrastructure
+        run: |
+          # Deploy DNS stack first (if not exists)
+          npm run deploy:dns -- --require-approval never || true
+          
+          # Wait for certificate validation (if newly created)
+          echo "Waiting for potential certificate validation..."
+          sleep 30
+          
+          # Deploy remaining stacks
+          npm run deploy:storage -- --require-approval never
+          npm run deploy:backend -- --require-approval never
+          npm run deploy:deployment -- --require-approval never
+          npm run deploy:monitoring -- --require-approval never
+
+      - name: Deploy frontend
+        run: |
+          # Get the bucket name from CloudFormation outputs
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name prod-stardex-storage \
+            --query 'Stacks[0].Outputs[?OutputKey==`WebsiteBucketName`].OutputValue' \
+            --output text)
+
+          # Get the distribution ID from CloudFormation outputs
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name prod-stardex-storage \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
+            --output text)
+
+          # Sync frontend files to S3
+          cd frontend
+          aws s3 sync out/ s3://$BUCKET_NAME/ --delete
+
+          # Create CloudFront invalidation
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
+
+      - name: Update API Gateway stage
+        run: |
+          # Get the API ID from CloudFormation outputs
+          API_ID=$(aws cloudformation describe-stacks \
+            --stack-name prod-stardex-backend \
+            --query 'Stacks[0].Outputs[?OutputKey==`APIEndpoint`].OutputValue' \
+            --output text | cut -d'/' -f3)
+
+          # Create deployment and update stage
+          aws apigateway create-deployment \
+            --rest-api-id $API_ID \
+            --stage-name prod
+
+      - name: Output deployment URLs
+        run: |
+          echo "Frontend: https://stardex.bjornmelin.io"
+          echo "Backend: https://api.stardex.bjornmelin.io"
+          echo "API Documentation: https://api.stardex.bjornmelin.io/docs"
