@@ -39,22 +39,27 @@ export async function clusterRepositories(
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.detail || `Clustering API error: ${response.statusText}`);
+      throw new Error(
+        errorData.detail || `Clustering API error: ${response.statusText}`
+      );
     }
 
     const result: ClusteringResponse = await response.json();
-    
+
     if (result.status === "error") {
       throw new Error(result.error_message || "Unknown clustering error");
     }
-    
+
     return result;
   } catch (error) {
     console.error("Error clustering repositories:", error);
     return {
       status: "error",
-      error_message: error instanceof Error ? error.message : "Failed to cluster repositories",
-      total_processing_time_ms: 0
+      error_message:
+        error instanceof Error
+          ? error.message
+          : "Failed to cluster repositories",
+      total_processing_time_ms: 0,
     };
   }
 }
@@ -64,23 +69,26 @@ export const defaultClusteringConfig: ClusteringRequest = {
   repositories: [],
   kmeans_clusters: 5,
   hierarchical_threshold: 1.5,
-  pca_components: 10
+  pca_components: 10,
 };
 
 // Algorithm descriptions
 export const algorithmDescriptions = {
   kmeans: {
     name: "K-Means Clustering",
-    description: "Groups repositories into distinct clusters based on similarity"
+    description:
+      "Groups repositories into distinct clusters based on feature similarity. Each repository belongs to the cluster with the nearest mean, resulting in partitions that minimize within-cluster distances.",
   },
   hierarchical: {
     name: "Hierarchical Clustering",
-    description: "Creates a tree-like structure of repository relationships"
+    description:
+      "Creates a tree-like structure of repository relationships where larger clusters contain smaller, more tightly related groups. The threshold controls how closely related repositories must be to form a cluster.",
   },
   pca_hierarchical: {
     name: "PCA + Hierarchical",
-    description: "Reduces complexity before clustering for better results"
-  }
+    description:
+      "First reduces repository features to principal components that capture the most important patterns, then performs hierarchical clustering. This can reveal underlying structures that might be hidden in the raw features.",
+  },
 };
 
 // Health check function
