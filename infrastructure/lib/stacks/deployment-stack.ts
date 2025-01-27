@@ -1,47 +1,18 @@
 import * as cdk from "aws-cdk-lib";
-import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { DeploymentStackProps } from "../types/stack-props";
 
+/**
+ * Stack for deployment-specific resources and configurations
+ * Note: GitHub OIDC and IAM roles are created by the bootstrap stack
+ */
 export class DeploymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: DeploymentStackProps) {
     super(scope, id, props);
 
-    // GitHub Actions OIDC Provider
-    const provider = new iam.OpenIdConnectProvider(this, "GitHubProvider", {
-      url: "https://token.actions.githubusercontent.com",
-      clientIds: ["sts.amazonaws.com"],
-      thumbprints: ["6938fd4d98bab03faadb97b34396831e3780aea1"],
-    });
-
-    // GitHub Actions Role
-    const gitHubActionsRole = new iam.Role(this, "GitHubActionsRole", {
-      roleName: `${props.environment}-stardex-github-actions-role`,
-      assumedBy: new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
-        StringLike: {
-          "token.actions.githubusercontent.com:sub": "repo:BjornMelin/stardex:*",
-        },
-        StringEquals: {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        },
-      }),
-    });
-
-    // Frontend deployment permissions
-    const s3DeploymentPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:ListBucket",
-        "s3:DeleteObject",
-      ],
-      resources: [props.bucket.bucketArn, `${props.bucket.bucketArn}/*`],
-    });
-
-    // CloudFront invalidation permissions
-    const cloudFrontDeploymentPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
+    // Allow CloudFront invalidations
+    const cloudFrontPolicy = new cdk.aws_iam.PolicyStatement({
+      effect: cdk.aws_iam.Effect.ALLOW,
       actions: [
         "cloudfront:CreateInvalidation",
         "cloudfront:GetInvalidation",
@@ -52,50 +23,26 @@ export class DeploymentStack extends cdk.Stack {
       ],
     });
 
-    // Backend deployment permissions
-    const lambdaDeploymentPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
+    // Allow S3 deployment access
+    const s3Policy = new cdk.aws_iam.PolicyStatement({
+      effect: cdk.aws_iam.Effect.ALLOW,
       actions: [
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration",
-        "lambda:GetFunction",
-        "lambda:PublishVersion",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject",
       ],
-      resources: [`arn:aws:lambda:${this.region}:${this.account}:function:*-stardex-*`],
+      resources: [props.bucket.bucketArn, `${props.bucket.bucketArn}/*`],
     });
 
-    // API Gateway deployment permissions
-    const apiGatewayDeploymentPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "apigateway:POST",
-        "apigateway:GET",
-        "apigateway:PUT",
-        "apigateway:DELETE",
-      ],
-      resources: [
-        `arn:aws:apigateway:${this.region}::/restapis/*`,
-        `arn:aws:apigateway:${this.region}::/stages/*`,
-        `arn:aws:apigateway:${this.region}::/deployments/*`,
-      ],
+    // Create deployment group for application
+    const deploymentGroup = new cdk.aws_iam.Group(this, "DeploymentGroup", {
+      groupName: `${props.environment}-stardex-deployment`,
     });
 
-    // CloudFormation permissions for stack outputs
-    const cloudFormationPolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ["cloudformation:DescribeStacks"],
-      resources: [
-        `arn:aws:cloudformation:${this.region}:${this.account}:stack/${this.stackName}/*`,
-        `arn:aws:cloudformation:${this.region}:${this.account}:stack/prod-stardex-*/*`,
-      ],
-    });
-
-    // Attach policies to role
-    gitHubActionsRole.addToPolicy(s3DeploymentPolicy);
-    gitHubActionsRole.addToPolicy(cloudFrontDeploymentPolicy);
-    gitHubActionsRole.addToPolicy(lambdaDeploymentPolicy);
-    gitHubActionsRole.addToPolicy(apiGatewayDeploymentPolicy);
-    gitHubActionsRole.addToPolicy(cloudFormationPolicy);
+    // Attach policies to the deployment group
+    deploymentGroup.addToPolicy(cloudFrontPolicy);
+    deploymentGroup.addToPolicy(s3Policy);
 
     // Add tags
     cdk.Tags.of(this).add("Stack", "Deployment");
@@ -105,10 +52,10 @@ export class DeploymentStack extends cdk.Stack {
     }
 
     // Outputs
-    new cdk.CfnOutput(this, "GitHubActionsRoleArn", {
-      value: gitHubActionsRole.roleArn,
-      description: "ARN of the GitHub Actions IAM role",
-      exportName: `${props.environment}-stardex-github-actions-role-arn`,
+    new cdk.CfnOutput(this, "DeploymentGroupName", {
+      value: deploymentGroup.groupName,
+      description: "Name of the deployment IAM group",
+      exportName: `${props.environment}-stardex-deployment-group`,
     });
   }
 }

@@ -1,102 +1,98 @@
 # Stardex Infrastructure
 
-CDK-based infrastructure for the Stardex application.
+CDK-based infrastructure for the Stardex application with automated setup and deployment.
+
+## Quick Start
+
+```bash
+# Install dependencies
+cd infrastructure
+npm install
+
+# Run bootstrap script (requires AWS and GitHub CLI)
+chmod +x scripts/bootstrap.sh
+./scripts/bootstrap.sh
+```
+
+The bootstrap script will:
+
+1. Check prerequisites (AWS CLI, Node.js, GitHub CLI)
+2. Install dependencies
+3. Bootstrap CDK
+4. Deploy the bootstrap stack (OIDC provider and IAM roles)
+5. Configure GitHub environment and secrets
+6. Create initial infrastructure commit
 
 ## Architecture
 
-The infrastructure is organized into reusable constructs and focused stacks:
-
-### Reusable Constructs
-
-- `StaticWebsite`: S3 + CloudFront for frontend hosting
-- `ApiEndpoint`: API Gateway with custom domain
-- `LambdaFunction`: Standardized Lambda configuration
-- `MonitoringDashboard`: CloudWatch metrics and alarms
-
 ### Stacks
 
-1. DNS Stack (`prod-stardex-dns`)
+1. Bootstrap Stack (`prod-stardex-bootstrap`)
+
+   - GitHub OIDC provider
+   - IAM roles for deployment
+   - Automated setup
+
+2. DNS Stack (`prod-stardex-dns`)
 
    - SSL Certificate
    - Route53 configuration
 
-2. Storage Stack (`prod-stardex-storage`)
+3. Storage Stack (`prod-stardex-storage`)
 
-   - Frontend hosting
+   - S3 bucket for frontend
    - CloudFront distribution
-   - S3 bucket with versioning
+   - Security configuration
 
-3. Backend Stack (`prod-stardex-backend`)
+4. Backend Stack (`prod-stardex-backend`)
 
    - FastAPI Lambda function
    - API Gateway
-   - Custom domain (api.stardex.bjornmelin.io)
+   - Custom domain
 
-4. Deployment Stack (`prod-stardex-deployment`)
+5. Deployment Stack (`prod-stardex-deployment`)
 
-   - GitHub Actions OIDC auth
-   - Deployment permissions
+   - GitHub Actions permissions
+   - Deployment configuration
 
-5. Monitoring Stack (`prod-stardex-monitoring`)
+6. Monitoring Stack (`prod-stardex-monitoring`)
    - CloudWatch dashboard
-   - Alarms and notifications
+   - Custom metrics
+   - Alarms
 
-## Prerequisites
+### Reusable Constructs
+
+- `StaticWebsite`: S3 + CloudFront configuration
+- `ApiEndpoint`: API Gateway setup
+- `LambdaFunction`: Standardized Lambda
+- `MonitoringDashboard`: Metrics and alarms
+
+## Development
+
+### Prerequisites
 
 - Node.js 20.x
-- AWS CLI configured
-- AWS CDK CLI installed (`npm install -g aws-cdk`)
+- AWS CLI configured with admin access
+- GitHub CLI authenticated
+- CDK CLI: `npm install -g aws-cdk`
 
-## Development Setup
-
-1. Install dependencies:
+### Local Development
 
 ```bash
+# Install dependencies
 npm install
+
+# Watch for changes
+npm run watch
+
+# Run tests
+npm test
+
+# Compare changes
+npm run diff
 ```
 
-2. Build TypeScript:
-
-```bash
-npm run build
-```
-
-3. Bootstrap CDK (first time only):
-
-```bash
-cdk bootstrap aws://ACCOUNT-NUMBER/us-east-1
-```
-
-## Deployment
-
-Deploy stacks in sequence:
-
-```bash
-# Deploy DNS and wait for certificate validation (15-30 mins)
-npm run deploy:dns
-
-# Deploy remaining stacks
-npm run deploy:storage
-npm run deploy:backend
-npm run deploy:deployment
-npm run deploy:monitoring
-
-# Or deploy all at once (not recommended for first deployment)
-npm run deploy:all
-```
-
-## Stack Dependencies
-
-```mermaid
-graph TD
-  DNS[DNS Stack] --> Storage[Storage Stack]
-  DNS --> Backend[Backend Stack]
-  Storage --> Deployment[Deployment Stack]
-  Storage --> Monitoring[Monitoring Stack]
-  Backend --> Monitoring
-```
-
-## Directory Structure
+### Project Structure
 
 ```
 infrastructure/
@@ -109,6 +105,7 @@ infrastructure/
 │   │   ├── monitoring-dashboard.ts
 │   │   └── static-website.ts
 │   ├── stacks/            # Stack implementations
+│   │   ├── bootstrap-stack.ts
 │   │   ├── backend-stack.ts
 │   │   ├── deployment-stack.ts
 │   │   ├── dns-stack.ts
@@ -116,78 +113,105 @@ infrastructure/
 │   │   └── storage-stack.ts
 │   ├── types/            # TypeScript types
 │   │   └── stack-props.ts
-│   └── constants.ts      # Shared constants
+│   └── constants.ts      # Shared configuration
 ├── scripts/             # Helper scripts
-│   └── bundle-lambda.sh # Lambda bundling script
-├── cdk.json            # CDK configuration
-└── package.json        # Dependencies
+│   ├── bootstrap.sh     # Initial setup
+│   └── bundle-lambda.sh # Lambda packaging
+└── cdk.json            # CDK configuration
 ```
 
-## Available Commands
+## Deployment
+
+### Initial Setup
 
 ```bash
-# Build TypeScript
-npm run build
+# Run automated bootstrap
+./scripts/bootstrap.sh
 
-# Watch for changes
-npm run watch
+# Or manual steps:
+npm install
+npx cdk bootstrap
+npx cdk deploy prod-stardex-bootstrap
+```
 
-# Compare changes
-npm run diff
+### Regular Deployments
 
-# Deploy individual stacks
+Deployments are automated via GitHub Actions:
+
+1. Push changes to a feature branch
+2. Create a pull request
+3. GitHub Actions runs tests
+4. On merge to main:
+   - Infrastructure is deployed
+   - Application is built and deployed
+   - Health checks run
+   - Results posted to PR
+
+Manual deployment if needed:
+
+```bash
 npm run deploy:dns
 npm run deploy:storage
 npm run deploy:backend
 npm run deploy:deployment
 npm run deploy:monitoring
-
-# Deploy all stacks
-npm run deploy:all
-
-# Destroy all stacks (use with caution)
-npm run destroy:all
 ```
 
 ## Monitoring
 
-All resources are monitored through a unified CloudWatch dashboard:
-
-- Frontend: CloudFront metrics, S3 access
-- Backend: Lambda metrics, API Gateway metrics
-- Custom alarms with email notifications
-- Log retention policies
+- CloudWatch dashboard: [AWS Console Link]
+- Custom metrics for all components
+- Automated alerts
+- Performance tracking
 
 ## Security
 
-- HTTPS only
-- TLS 1.2+
-- Strict security headers
-- S3 bucket policies
-- IAM least privilege
+- OIDC authentication
+- Least privilege permissions
+- Resource encryption
+- Security headers
 - CORS configuration
-- API Gateway authorization
+- AWS best practices
 
 ## Maintenance
 
-To update dependencies:
+### Common Tasks
 
 ```bash
+# Update dependencies
 npm update
-```
 
-To check for security vulnerabilities:
-
-```bash
+# Run security audit
 npm audit
-```
 
-## Clean Up
+# Check for CDK updates
+npm outdated
 
-To remove all resources:
-
-```bash
+# Destroy resources
 npm run destroy:all
 ```
 
-Note: Some resources like S3 buckets with versioning enabled will need manual cleanup.
+### Troubleshooting
+
+See `DEPLOYMENT.md` for:
+
+- Detailed troubleshooting steps
+- Common issues and solutions
+- Rollback procedures
+- Security considerations
+
+## Contributing
+
+1. Create feature branch
+2. Make changes
+3. Run tests: `npm test`
+4. Create pull request
+5. Wait for CI checks
+6. Get approval
+7. Merge to main
+
+## Additional Documentation
+
+- [Deployment Guide](./DEPLOYMENT.md)
+- [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/latest/guide/)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)

@@ -6,6 +6,7 @@ import { StorageStack } from "../lib/stacks/storage-stack";
 import { DeploymentStack } from "../lib/stacks/deployment-stack";
 import { MonitoringStack } from "../lib/stacks/monitoring-stack";
 import { BackendStack } from "../lib/stacks/backend-stack";
+import { BootstrapStack } from "../lib/stacks/bootstrap-stack";
 import { CONFIG, getStackName } from "../lib/constants";
 
 const app = new cdk.App();
@@ -15,6 +16,19 @@ const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.CDK_DEFAULT_REGION || "us-east-1",
 };
+
+// Bootstrap Stack (deploy this first)
+const bootstrapStack = new BootstrapStack(
+  app,
+  getStackName("bootstrap", "prod"),
+  {
+    env,
+    domainName: CONFIG.prod.domainName,
+    rootDomainName: CONFIG.prod.rootDomainName,
+    environment: CONFIG.prod.environment,
+    tags: CONFIG.tags,
+  }
+);
 
 // DNS Stack (must be in us-east-1 for CloudFront)
 const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
@@ -76,6 +90,8 @@ const monitoringStack = new MonitoringStack(
     environment: CONFIG.prod.environment,
     bucket: storageStack.bucket,
     distribution: storageStack.distribution,
+    lambda: backendStack.lambda,
+    api: backendStack.api,
     tags: CONFIG.tags,
   }
 );
@@ -85,5 +101,22 @@ storageStack.addDependency(dnsStack);
 backendStack.addDependency(dnsStack);
 deploymentStack.addDependency(storageStack);
 monitoringStack.addDependency(storageStack);
+monitoringStack.addDependency(backendStack);
+
+// Add tags to all stacks
+const stacks = [
+  bootstrapStack,
+  dnsStack,
+  storageStack,
+  backendStack,
+  deploymentStack,
+  monitoringStack,
+];
+
+stacks.forEach((stack) => {
+  cdk.Tags.of(stack).add("Project", "Stardex");
+  cdk.Tags.of(stack).add("ManagedBy", "CDK");
+  cdk.Tags.of(stack).add("Environment", CONFIG.prod.environment);
+});
 
 app.synth();

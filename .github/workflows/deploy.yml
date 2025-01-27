@@ -1,7 +1,10 @@
-name: Deploy to AWS
+name: Deploy Stardex
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -9,106 +12,268 @@ on:
 permissions:
   id-token: write   # Required for AWS OIDC
   contents: read    # Required to checkout repository
+  pull-requests: write # Required for test results
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
 
 jobs:
-  deploy:
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    environment: production
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      # Frontend Tests
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
-      - name: Build frontend
+      - name: Run frontend tests
         working-directory: frontend
-        run: npm run build
+        run: |
+          npm run lint
+          npm run test
 
+      # Backend Tests
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run backend tests
+        working-directory: backend
+        run: python -m pytest
+
+      # Infrastructure Tests
       - name: Install CDK dependencies
         working-directory: infrastructure
-        run: npm install
+        run: npm ci
+
+      - name: Run CDK tests
+        working-directory: infrastructure
+        run: npm test
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      bucket_name: ${{ steps.get-outputs.outputs.bucket_name }}
+      distribution_id: ${{ steps.get-outputs.outputs.distribution_id }}
+      api_url: ${{ steps.get-outputs.outputs.api_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Bundle Lambda function
+      - name: Install CDK dependencies
+        working-directory: infrastructure
+        run: npm ci
+
+      # Deploy stacks in order with proper error handling
+      - name: Deploy DNS Stack
         working-directory: infrastructure
         run: |
+          npm run deploy:dns -- --require-approval never || {
+            echo "DNS stack deployment failed"
+            exit 1
+          }
+          # Wait for certificate validation
+          echo "Waiting for certificate validation (may take 15-30 minutes)..."
+          sleep 300  # Initial 5 minute wait
+
+      - name: Deploy Storage Stack
+        working-directory: infrastructure
+        run: |
+          npm run deploy:storage -- --require-approval never || {
+            echo "Storage stack deployment failed"
+            exit 1
+          }
+
+      - name: Deploy Backend Stack
+        working-directory: infrastructure
+        run: |
+          # Bundle Lambda function
           chmod +x scripts/bundle-lambda.sh
           ./scripts/bundle-lambda.sh
+          
+          npm run deploy:backend -- --require-approval never || {
+            echo "Backend stack deployment failed"
+            exit 1
+          }
 
-      - name: Deploy CDK stacks
+      - name: Deploy Deployment Stack
         working-directory: infrastructure
         run: |
-          # Deploy DNS stack first (if not exists)
-          npm run deploy:dns -- --require-approval never || true
-          
-          # Wait for certificate validation (if newly created)
-          echo "Waiting for potential certificate validation..."
-          sleep 30
-          
-          # Deploy remaining stacks
-          npm run deploy:storage -- --require-approval never
-          npm run deploy:backend -- --require-approval never
-          npm run deploy:deployment -- --require-approval never
-          npm run deploy:monitoring -- --require-approval never
+          npm run deploy:deployment -- --require-approval never || {
+            echo "Deployment stack deployment failed"
+            exit 1
+          }
 
-      - name: Deploy frontend
+      - name: Deploy Monitoring Stack
+        working-directory: infrastructure
         run: |
-          # Get the bucket name from CloudFormation outputs
+          npm run deploy:monitoring -- --require-approval never || {
+            echo "Monitoring stack deployment failed"
+            exit 1
+          }
+
+      - name: Get Stack Outputs
+        id: get-outputs
+        run: |
           BUCKET_NAME=$(aws cloudformation describe-stacks \
             --stack-name prod-stardex-storage \
             --query 'Stacks[0].Outputs[?OutputKey==`WebsiteBucketName`].OutputValue' \
             --output text)
-
-          # Get the distribution ID from CloudFormation outputs
+          
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
             --stack-name prod-stardex-storage \
             --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
             --output text)
+          
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name prod-stardex-backend \
+            --query 'Stacks[0].Outputs[?OutputKey==`APICustomDomain`].OutputValue' \
+            --output text)
+          
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
-          # Sync frontend files to S3
-          cd frontend
-          aws s3 sync out/ s3://$BUCKET_NAME/ --delete
+  deploy-application:
+    name: Deploy Application
+    needs: deploy-infrastructure
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Frontend Deployment
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ needs.deploy-infrastructure.outputs.api_url }}
+        run: npm run build
+
+      - name: Deploy frontend
+        env:
+          BUCKET_NAME: ${{ needs.deploy-infrastructure.outputs.bucket_name }}
+          DISTRIBUTION_ID: ${{ needs.deploy-infrastructure.outputs.distribution_id }}
+        run: |
+          aws s3 sync frontend/out/ s3://$BUCKET_NAME/ --delete
+          
           # Create CloudFront invalidation
           aws cloudfront create-invalidation \
             --distribution-id $DISTRIBUTION_ID \
             --paths "/*"
 
-      - name: Update API Gateway stage
-        run: |
-          # Get the API ID from CloudFormation outputs
-          API_ID=$(aws cloudformation describe-stacks \
-            --stack-name prod-stardex-backend \
-            --query 'Stacks[0].Outputs[?OutputKey==`APIEndpoint`].OutputValue' \
-            --output text | cut -d'/' -f3)
+  validate:
+    name: Validate Deployment
+    needs: [deploy-infrastructure, deploy-application]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
 
-          # Create deployment and update stage
-          aws apigateway create-deployment \
-            --rest-api-id $API_ID \
-            --stage-name prod
-
-      - name: Output deployment URLs
+    steps:
+      - name: Check frontend
         run: |
-          echo "Frontend: https://stardex.bjornmelin.io"
-          echo "Backend: https://api.stardex.bjornmelin.io"
-          echo "API Documentation: https://api.stardex.bjornmelin.io/docs"
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://stardex.bjornmelin.io)
+          if [ $STATUS_CODE -ne 200 ]; then
+            echo "Frontend health check failed with status $STATUS_CODE"
+            exit 1
+          fi
+
+      - name: Check backend
+        run: |
+          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" ${{ needs.deploy-infrastructure.outputs.api_url }}/health)
+          if [ $STATUS_CODE -ne 200 ]; then
+            echo "Backend health check failed with status $STATUS_CODE"
+            exit 1
+          fi
+
+      - name: Notify on success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `🚀 Deployment successful!
+              
+              Frontend: https://stardex.bjornmelin.io
+              API: ${{ needs.deploy-infrastructure.outputs.api_url }}
+              
+              Stack Outputs:
+              - S3 Bucket: ${{ needs.deploy-infrastructure.outputs.bucket_name }}
+              - CloudFront ID: ${{ needs.deploy-infrastructure.outputs.distribution_id }}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `❌ Deployment failed!
+              
+              Please check the workflow logs for details.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
