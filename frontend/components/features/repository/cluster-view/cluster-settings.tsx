@@ -25,52 +25,55 @@ export function ClusterSettings({
   const [showingSettings, setShowingSettings] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold">
-            {showingSettings ? "Cluster Settings" : "Filter Clusters"}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {showingSettings
-              ? CLUSTERING_HELP_TEXT.settings.description
-              : CLUSTERING_HELP_TEXT.filters.description}
-          </p>
+    <div className="w-72 border-r p-4 flex flex-col">
+          <div className="border-b pb-4 mb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">
+                {showingSettings ? "Cluster Settings" : "Filter Clusters"}
+              </h3>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => setShowingSettings(!showingSettings)}
+                >
+                  {showingSettings ? "Filters" : "Settings"}
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Help">
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80">
+                    <HelpContent isSettings={showingSettings} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {showingSettings
+                ? CLUSTERING_HELP_TEXT.settings.description
+                : CLUSTERING_HELP_TEXT.filters.description}
+            </p>
+          </div>
+    
+          <div className="overflow-y-auto flex-1">
+            {showingSettings ? (
+              <ParameterSettings
+                settings={settings}
+                onSettingsChange={onSettingsChange}
+              />
+            ) : (
+              <FilterPanel
+                filters={filters}
+                onFiltersChange={onFiltersChange || (() => {})}
+                availableLanguages={availableLanguages}
+                availableTopics={availableTopics}
+              />
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowingSettings(!showingSettings)}
-          >
-            {showingSettings ? "Show Filters" : "Show Settings"}
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" title="Help">
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <HelpContent isSettings={showingSettings} />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      {showingSettings ? (
-        <ParameterSettings
-          settings={settings}
-          onSettingsChange={onSettingsChange}
-        />
-      ) : (
-        <FilterPanel
-          filters={filters}
-          onFiltersChange={onFiltersChange || (() => {})}
-          availableLanguages={availableLanguages}
-          availableTopics={availableTopics}
-        />
-      )}
-    </div>
   );
 }

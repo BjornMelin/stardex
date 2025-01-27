@@ -5,6 +5,10 @@ export interface ClusterViewProps {
   result: ClusterResult;
   repositories: GitHubRepo[];
   algorithm: string;
+  currentSettings: ClusterParameterSettings;
+  currentFilters: ClusterFilters;
+  onSettingsChange?: (settings: ClusterParameterSettings) => void;
+  onFiltersChange?: (filters: ClusterFilters) => void;
 }
 
 export interface ClusterData {

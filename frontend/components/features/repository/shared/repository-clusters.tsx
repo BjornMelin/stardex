@@ -8,21 +8,29 @@ import { clusterRepositories } from "@/lib/clustering-api";
 import { GitHubRepo } from "@/lib/github";
 import { ClusterView } from "../cluster-view/cluster-view";
 import { RepositoryLoading } from "../list-view/repository-loading";
+import { ClusterParameterSettings, ClusterFilters } from "@/lib/types/clustering";
 
 interface RepositoryClustersProps {
   repositories: GitHubRepo[];
 }
 
 export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
-  // Default clustering parameters
-  const [clusterParams] = useState({
+  const [clusterParams, setClusterParams] = useState<ClusterParameterSettings>({
     kmeans_clusters: 5,
     hierarchical_threshold: 1.5,
     pca_components: 10,
   });
 
+  const [filters, setFilters] = useState<ClusterFilters>({});
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["clusterResults", repositories.length, clusterParams],
+    queryKey: [
+      "clusterResults",
+      repositories.length,
+      clusterParams.kmeans_clusters,
+      clusterParams.hierarchical_threshold,
+      clusterParams.pca_components,
+    ],
     queryFn: async () => {
       const response = await clusterRepositories({
         repositories,
@@ -97,6 +105,10 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
             result={results.kmeans}
             repositories={repositories}
             algorithm="kmeans"
+            onSettingsChange={setClusterParams}
+            currentSettings={clusterParams}
+            onFiltersChange={setFilters}
+            currentFilters={filters}
           />
         </TabsContent>
       )}
@@ -106,6 +118,10 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
             result={results.hierarchical}
             repositories={repositories}
             algorithm="hierarchical"
+            onSettingsChange={setClusterParams}
+            currentSettings={clusterParams}
+            onFiltersChange={setFilters}
+            currentFilters={filters}
           />
         </TabsContent>
       )}
@@ -115,6 +131,10 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
             result={results.pca_hierarchical}
             repositories={repositories}
             algorithm="pca_hierarchical"
+            onSettingsChange={setClusterParams}
+            currentSettings={clusterParams}
+            onFiltersChange={setFilters}
+            currentFilters={filters}
           />
         </TabsContent>
       )}

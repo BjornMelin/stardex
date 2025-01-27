@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Slider } from "@/components/ui/slider";
 import { ClusterParameterSettings } from "@/lib/types/clustering";
 import {
@@ -19,12 +19,26 @@ export function ParameterSettings({
 }: ParameterSettingsProps) {
   const [localSettings, setLocalSettings] = useState(settings);
 
+  const handleSettingChange = useCallback(
+    (key: keyof ClusterParameterSettings, value: number) => {
+      const newSettings = { ...localSettings, [key]: value };
+      setLocalSettings(newSettings);
+      onSettingsChange(newSettings);
+    },
+    [localSettings, onSettingsChange]
+  );
+
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="space-y-4">
       <div>
-        <label className="text-sm font-medium">
-          {CLUSTERING_HELP_TEXT.settings.kmeans.title}
-        </label>
+        <div className="flex justify-between items-baseline mb-2">
+          <label className="text-xs font-medium">
+            {CLUSTERING_HELP_TEXT.settings.kmeans.title}
+          </label>
+          <span className="text-xs text-muted-foreground">
+            {localSettings.kmeans_clusters} clusters
+          </span>
+        </div>
         <Slider
           value={[localSettings.kmeans_clusters]}
           min={CLUSTERING_CONFIG.kmeans.min}
@@ -34,18 +48,20 @@ export function ParameterSettings({
             setLocalSettings({ ...localSettings, kmeans_clusters: value })
           }
           onValueCommit={([value]) =>
-            onSettingsChange({ ...settings, kmeans_clusters: value })
+            handleSettingChange("kmeans_clusters", value)
           }
-          className="mt-2"
         />
-        <div className="text-sm text-muted-foreground mt-1">
-          {localSettings.kmeans_clusters} clusters
-        </div>
       </div>
+
       <div>
-        <label className="text-sm font-medium">
-          {CLUSTERING_HELP_TEXT.settings.hierarchical.title}
-        </label>
+        <div className="flex justify-between items-baseline mb-2">
+          <label className="text-xs font-medium">
+            {CLUSTERING_HELP_TEXT.settings.hierarchical.title}
+          </label>
+          <span className="text-xs text-muted-foreground">
+            Threshold: {localSettings.hierarchical_threshold}
+          </span>
+        </div>
         <Slider
           value={[localSettings.hierarchical_threshold]}
           min={CLUSTERING_CONFIG.hierarchical.min}
@@ -58,18 +74,20 @@ export function ParameterSettings({
             })
           }
           onValueCommit={([value]) =>
-            onSettingsChange({ ...settings, hierarchical_threshold: value })
+            handleSettingChange("hierarchical_threshold", value)
           }
-          className="mt-2"
         />
-        <div className="text-sm text-muted-foreground mt-1">
-          Threshold: {localSettings.hierarchical_threshold}
-        </div>
       </div>
+
       <div>
-        <label className="text-sm font-medium">
-          {CLUSTERING_HELP_TEXT.settings.pca.title}
-        </label>
+        <div className="flex justify-between items-baseline mb-2">
+          <label className="text-xs font-medium">
+            {CLUSTERING_HELP_TEXT.settings.pca.title}
+          </label>
+          <span className="text-xs text-muted-foreground">
+            {localSettings.pca_components} components
+          </span>
+        </div>
         <Slider
           value={[localSettings.pca_components]}
           min={CLUSTERING_CONFIG.pca.min}
@@ -79,13 +97,9 @@ export function ParameterSettings({
             setLocalSettings({ ...localSettings, pca_components: value })
           }
           onValueCommit={([value]) =>
-            onSettingsChange({ ...settings, pca_components: value })
+            handleSettingChange("pca_components", value)
           }
-          className="mt-2"
         />
-        <div className="text-sm text-muted-foreground mt-1">
-          {localSettings.pca_components} components
-        </div>
       </div>
     </div>
   );
