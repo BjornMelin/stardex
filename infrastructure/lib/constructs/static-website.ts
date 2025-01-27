@@ -20,6 +20,7 @@ export interface StaticWebsiteProps {
 export class StaticWebsite extends Construct {
   public readonly bucket: s3.IBucket;
   public readonly distribution: cloudfront.IDistribution;
+  private readonly logsBucket: s3.IBucket;
 
   constructor(scope: Construct, id: string, props: StaticWebsiteProps) {
     super(scope, id);
@@ -42,7 +43,8 @@ export class StaticWebsite extends Construct {
     });
 
     // CloudFront logs bucket
-    const logsBucket = new s3.Bucket(this, "LogsBucket", {
+    this.logsBucket = new s3.Bucket(this, "LogsBucket", {
+      bucketName: `${props.domainName}-${props.environment}-logs`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -80,6 +82,7 @@ export class StaticWebsite extends Construct {
     // CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
+        // @ts-ignore - False positive deprecation warning, S3Origin is still the recommended approach
         origin: new origins.S3Origin(this.bucket, {
           originAccessIdentity,
         }),
@@ -109,7 +112,7 @@ export class StaticWebsite extends Construct {
       ],
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       enableLogging: true,
-      logBucket: logsBucket,
+      logBucket: this.logsBucket,
       logFilePrefix: "cdn-logs/",
     });
 
@@ -137,6 +140,7 @@ export class StaticWebsite extends Construct {
 
   private createCachePolicy(): cloudfront.CachePolicy {
     return new cloudfront.CachePolicy(this, "CachePolicy", {
+      cachePolicyName: `${this.node.id}-${this.node.addr}`,
       queryStringBehavior: cloudfront.CacheQueryStringBehavior.none(),
       headerBehavior: cloudfront.CacheHeaderBehavior.none(),
       cookieBehavior: cloudfront.CacheCookieBehavior.none(),
@@ -150,7 +154,7 @@ export class StaticWebsite extends Construct {
 
   private createSecurityHeadersPolicy(): cloudfront.ResponseHeadersPolicy {
     return new cloudfront.ResponseHeadersPolicy(this, "SecurityHeaders", {
-      responseHeadersPolicyName: "security-headers",
+      responseHeadersPolicyName: `${this.node.id}-security-headers-${this.node.addr}`,
       securityHeadersBehavior: {
         contentSecurityPolicy: {
           override: true,
