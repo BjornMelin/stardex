@@ -1,0 +1,73 @@
+import * as cdk from "aws-cdk-lib";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
+import { BackendStackProps } from "../types/stack-props";
+import { LambdaFunction } from "../constructs/lambda-function";
+import { ApiEndpoint } from "../constructs/api-endpoint";
+
+export class BackendStack extends cdk.Stack {
+  public readonly api: cdk.aws_apigateway.RestApi;
+  public readonly lambda: lambda.Function;
+
+  constructor(scope: Construct, id: string, props: BackendStackProps) {
+    super(scope, id);
+
+    // Create FastAPI Lambda function
+    const backendFunction = new LambdaFunction(this, "FastAPIFunction", {
+      functionName: "stardex-backend",
+      description: "FastAPI backend for Stardex application",
+      environment: props.environment,
+      codePath: "../backend",
+      handler: "app.main.handler",
+      runtime: lambda.Runtime.PYTHON_3_11,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment_vars: {
+        CORS_ORIGINS: `https://${props.domainName}`,
+      },
+    });
+
+    // Create API Gateway with Lambda integration
+    const apiEndpoint = new ApiEndpoint(this, "API", {
+      domainName: props.domainName,
+      environment: props.environment,
+      certificate: props.certificate,
+      hostedZone: props.hostedZone,
+      lambdaFunction: backendFunction.function,
+      apiName: "Stardex API",
+      allowOrigins: [
+        `https://${props.domainName}`,
+        "http://localhost:3000", // Allow localhost for development
+      ],
+    });
+
+    this.api = apiEndpoint.api;
+    this.lambda = backendFunction.function;
+
+    // Add tags
+    cdk.Tags.of(this).add("Stack", "Backend");
+    cdk.Tags.of(this).add("Environment", props.environment);
+    for (const [key, value] of Object.entries(props.tags || {})) {
+      cdk.Tags.of(this).add(key, value);
+    }
+
+    // Outputs
+    new cdk.CfnOutput(this, "APIEndpoint", {
+      value: this.api.url,
+      description: "API Gateway Endpoint",
+      exportName: `${props.environment}-stardex-api-endpoint`,
+    });
+
+    new cdk.CfnOutput(this, "APICustomDomain", {
+      value: `https://api.${props.domainName}`,
+      description: "API Custom Domain",
+      exportName: `${props.environment}-stardex-api-domain`,
+    });
+
+    new cdk.CfnOutput(this, "LambdaFunctionName", {
+      value: this.lambda.functionName,
+      description: "Lambda Function Name",
+      exportName: `${props.environment}-stardex-lambda-name`,
+    });
+  }
+}
