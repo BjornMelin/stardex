@@ -25,61 +25,73 @@ export class StaticWebsite extends Construct {
   constructor(scope: Construct, id: string, props: StaticWebsiteProps) {
     super(scope, id);
 
-    // Website bucket
-    this.bucket = new s3.Bucket(this, "WebsiteBucket", {
-      bucketName: `${props.domainName}-${props.environment}-website`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      versioned: true,
-      lifecycleRules: [
-        {
-          enabled: true,
-          noncurrentVersionExpiration: cdk.Duration.days(30),
-          noncurrentVersionTransitions: [
-            {
-              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7),
-            },
-          ],
-          transitions: [
-            {
-              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(30),
-            },
-          ],
-          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
-        },
-      ],
-    });
+    // Try to import existing website bucket, create new one if it doesn't exist
+    const websiteBucketName = `${props.domainName}-${props.environment}-website`;
+    try {
+      this.bucket = s3.Bucket.fromBucketName(this, "ImportedWebsiteBucket", websiteBucketName);
+    } catch {
+      this.bucket = new s3.Bucket(this, "WebsiteBucket", {
+        bucketName: websiteBucketName,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+        encryption: s3.BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        versioned: true,
+        lifecycleRules: [
+          {
+            enabled: true,
+            noncurrentVersionExpiration: cdk.Duration.days(30),
+            noncurrentVersionTransitions: [
+              {
+                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+                transitionAfter: cdk.Duration.days(7),
+              },
+            ],
+            transitions: [
+              {
+                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+                transitionAfter: cdk.Duration.days(30),
+              },
+            ],
+            abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+          },
+        ],
+      });
+    }
 
-    // CloudFront logs bucket
-    this.logsBucket = new s3.Bucket(this, "LogsBucket", {
-      bucketName: `${props.domainName}-${props.environment}-logs`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-      encryption: s3.BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      lifecycleRules: [
-        {
-          enabled: true,
-          transitions: [
-            {
-              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7),
-            },
-            {
-              storageClass: s3.StorageClass.GLACIER,
-              transitionAfter: cdk.Duration.days(30),
-            },
-          ],
-          expiration: cdk.Duration.days(90),
-          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
-        },
-      ],
-    });
+    // Try to import existing logs bucket, create new one if it doesn't exist
+    const logsBucketName = `${props.domainName}-${props.environment}-logs`;
+    try {
+      this.logsBucket = s3.Bucket.fromBucketName(this, "ImportedLogsBucket", logsBucketName);
+    } catch {
+      this.logsBucket = new s3.Bucket(this, "LogsBucket", {
+        bucketName: logsBucketName,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        autoDeleteObjects: true,
+        objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
+        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+        encryption: s3.BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        lifecycleRules: [
+          {
+            enabled: true,
+            transitions: [
+              {
+                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+                transitionAfter: cdk.Duration.days(7),
+              },
+              {
+                storageClass: s3.StorageClass.GLACIER,
+                transitionAfter: cdk.Duration.days(30),
+              },
+            ],
+            expiration: cdk.Duration.days(90),
+            abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
+          },
+        ],
+      });
+    }
 
     // Create Origin Access Identity
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(
@@ -204,8 +216,7 @@ export class StaticWebsite extends Construct {
           override: true,
         },
         referrerPolicy: {
-          referrerPolicy:
-            cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
           override: true,
         },
         xssProtection: {

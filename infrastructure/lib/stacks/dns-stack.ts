@@ -16,9 +16,10 @@ export class DnsStack extends cdk.Stack {
       domainName: props.rootDomainName,
     });
 
-    // Create certificate for the subdomain
+    // Create certificate for the subdomain and api subdomain
     this.certificate = new acm.Certificate(this, "SiteCertificate", {
       domainName: props.domainName,
+      subjectAlternativeNames: [`api.${props.domainName}`],
       validation: acm.CertificateValidation.fromDns(this.hostedZone),
     });
 
