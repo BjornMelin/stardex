@@ -255,6 +255,42 @@ graph LR
 - VPC isolation
 - TLS 1.2 enforcement
 
+### Security Notice
+
+This repository uses GitHub Actions for deployment. To protect the infrastructure:
+
+1. **Repository Protection**
+   - Only repository owners can deploy to production
+   - All changes require approved pull requests
+   - Branch protection rules on `main`
+   - Required status checks must pass
+   - Signed commits required
+
+2. **Environment Protection**
+   - Production environment is protected
+   - Required reviewers for deployments
+   - Deployment branch rules (only main)
+   - Wait timer between deployments
+
+3. **Infrastructure Protection**
+   - Infrastructure updates restricted to authorized roles
+   - OIDC authentication for AWS access
+   - Stack policies prevent unauthorized modifications
+   - Resource encryption enabled by default
+   - Least privilege IAM policies
+
+4. **Sensitive Information**
+   - All secrets stored in GitHub Secrets
+   - Environment variables properly secured
+   - AWS credentials never stored in code
+   - CDK context and outputs properly gitignored
+
+5. **Deployment Security**
+   - Automated security scanning
+   - Infrastructure changes require approval
+   - Deployment logs for audit trail
+   - Automated rollback on failure
+
 ## Cost Optimization
 
 Estimated monthly cost: $2-6/month

@@ -1,3 +1,37 @@
+# Infrastructure sensitive files
+.env*
+.aws/
+**/cdk.context.json
+infrastructure/cdk.out/
+**/cdk-outputs.json
+
+# AWS CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules/
+.pnpm-store/
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -80,6 +114,11 @@ Thumbs.db
 
 # cdk
 cdk.out
+
+.env*
+.aws/
+**/cdk.context.json
+infrastructure/cdk.out/
 
 # repomix
 repomix-output.txt
