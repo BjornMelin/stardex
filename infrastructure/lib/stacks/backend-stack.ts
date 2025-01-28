@@ -44,7 +44,7 @@ export class BackendStack extends cdk.Stack {
       memorySize: 512,
       vpc: vpc,
       vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED
       },
       environment_vars: {
         CORS_ORIGINS: `https://${props.domainName}`,
