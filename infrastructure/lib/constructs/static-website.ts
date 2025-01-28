@@ -25,73 +25,68 @@ export class StaticWebsite extends Construct {
   constructor(scope: Construct, id: string, props: StaticWebsiteProps) {
     super(scope, id);
 
-    // Try to import existing website bucket, create new one if it doesn't exist
-    const websiteBucketName = `${props.domainName}-${props.environment}-website`;
-    try {
-      this.bucket = s3.Bucket.fromBucketName(this, "ImportedWebsiteBucket", websiteBucketName);
-    } catch {
-      this.bucket = new s3.Bucket(this, "WebsiteBucket", {
-        bucketName: websiteBucketName,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        autoDeleteObjects: true,
-        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-        encryption: s3.BucketEncryption.S3_MANAGED,
-        enforceSSL: true,
-        versioned: true,
-        lifecycleRules: [
-          {
-            enabled: true,
-            noncurrentVersionExpiration: cdk.Duration.days(30),
-            noncurrentVersionTransitions: [
-              {
-                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-                transitionAfter: cdk.Duration.days(7),
-              },
-            ],
-            transitions: [
-              {
-                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-                transitionAfter: cdk.Duration.days(30),
-              },
-            ],
-            abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
-          },
-        ],
-      });
-    }
-
-    // Try to import existing logs bucket, create new one if it doesn't exist
+    // Create logs bucket first
     const logsBucketName = `${props.domainName}-${props.environment}-logs`;
-    try {
-      this.logsBucket = s3.Bucket.fromBucketName(this, "ImportedLogsBucket", logsBucketName);
-    } catch {
-      this.logsBucket = new s3.Bucket(this, "LogsBucket", {
-        bucketName: logsBucketName,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        autoDeleteObjects: true,
-        objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
-        blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-        encryption: s3.BucketEncryption.S3_MANAGED,
-        enforceSSL: true,
-        lifecycleRules: [
-          {
-            enabled: true,
-            transitions: [
-              {
-                storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-                transitionAfter: cdk.Duration.days(7),
-              },
-              {
-                storageClass: s3.StorageClass.GLACIER,
-                transitionAfter: cdk.Duration.days(30),
-              },
-            ],
-            expiration: cdk.Duration.days(90),
-            abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
-          },
-        ],
-      });
-    }
+    this.logsBucket = new s3.Bucket(this, "LogsBucket", {
+      bucketName: logsBucketName,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_PREFERRED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      serverAccessLogsPrefix: "bucket-logs/",
+      lifecycleRules: [
+        {
+          enabled: true,
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(7),
+            },
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+          expiration: cdk.Duration.days(90),
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
+        },
+      ],
+    });
+
+    // Create website bucket with logging enabled
+    const websiteBucketName = `${props.domainName}-${props.environment}-website`;
+    this.bucket = new s3.Bucket(this, "WebsiteBucket", {
+      bucketName: websiteBucketName,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+      serverAccessLogsBucket: this.logsBucket,
+      serverAccessLogsPrefix: "website-logs/",
+      lifecycleRules: [
+        {
+          enabled: true,
+          noncurrentVersionExpiration: cdk.Duration.days(30),
+          noncurrentVersionTransitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(7),
+            },
+          ],
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
+        },
+      ],
+    });
 
     // Create Origin Access Identity
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(
@@ -114,6 +109,9 @@ export class StaticWebsite extends Construct {
         ],
       })
     );
+
+    // Ensure the logs bucket exists before creating the distribution
+    const logBucketRef = this.logsBucket.node.defaultChild as s3.CfnBucket;
 
     // CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
@@ -150,6 +148,10 @@ export class StaticWebsite extends Construct {
       logBucket: this.logsBucket,
       logFilePrefix: "cdn-logs/",
     });
+
+    // Add explicit dependency to ensure logs bucket exists before CloudFront distribution
+    const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
+    cfnDistribution.addDependsOn(logBucketRef);
 
     // DNS record for the domain
     new route53.ARecord(this, "AliasRecord", {

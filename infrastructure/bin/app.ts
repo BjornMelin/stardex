@@ -9,15 +9,8 @@ import { CONFIG, getStackName } from "../lib/constants";
 
 const app = new cdk.App();
 
-// Environment configuration
-// Base environment for most stacks
+// Environment configuration for us-east-1
 const env = {
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION || "us-west-1", // Default to us-west-1
-};
-
-// Special environment for resources that must be in us-east-1
-const usEastEnv = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: "us-east-1",
 };
@@ -28,7 +21,7 @@ const bootstrapStack = new BootstrapStack(
   getStackName("bootstrap", "prod"),
   {
     env,
-    crossRegionReferences: true, // Enable cross-region references
+    crossRegionReferences: true,
     domainName: CONFIG.prod.domainName,
     rootDomainName: CONFIG.prod.rootDomainName,
     environment: CONFIG.prod.environment,
@@ -36,18 +29,18 @@ const bootstrapStack = new BootstrapStack(
   }
 );
 
-// DNS Stack (must be in us-east-1 for CloudFront)
+// DNS Stack (in us-east-1 for CloudFront)
 const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
-  env: usEastEnv, // Use us-east-1 for CloudFront certificate
+  env,
   domainName: CONFIG.prod.domainName,
   rootDomainName: CONFIG.prod.rootDomainName,
   environment: CONFIG.prod.environment,
   tags: CONFIG.tags,
 });
 
-// Parent Stack (must be in us-east-1 for CloudFront in storage stack)
+// Parent Stack (contains storage, backend, and monitoring as nested stacks)
 const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
-  env: usEastEnv,
+  env,
   crossRegionReferences: true,
   domainName: CONFIG.prod.domainName,
   rootDomainName: CONFIG.prod.rootDomainName,
