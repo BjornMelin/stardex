@@ -119,6 +119,7 @@ cdk.out
 .aws/
 **/cdk.context.json
 infrastructure/cdk.out/
+**/cdk-outputs.json
 
 # repomix
 repomix-output.txt
