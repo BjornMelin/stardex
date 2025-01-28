@@ -45,9 +45,9 @@ const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
   tags: CONFIG.tags,
 });
 
-// Parent Stack (contains storage, backend, and monitoring as nested stacks)
+// Parent Stack (must be in us-east-1 for CloudFront in storage stack)
 const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
-  env,
+  env: usEastEnv,
   crossRegionReferences: true,
   domainName: CONFIG.prod.domainName,
   rootDomainName: CONFIG.prod.rootDomainName,
