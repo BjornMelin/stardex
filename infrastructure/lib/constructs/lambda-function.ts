@@ -49,9 +49,9 @@ export class LambdaFunction extends Construct {
       }),
       functionName: `${props.environment}-${props.functionName}`,
       description: props.description,
-      timeout: props.timeout || cdk.Duration.seconds(30),
-      memorySize: props.memorySize || 512,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      timeout: props.timeout || cdk.Duration.seconds(10),  // Reduce timeout to save costs
+      memorySize: props.memorySize || 256,  // Reduce memory for cost optimization
+      logRetention: logs.RetentionDays.THREE_DAYS,  // Reduce log retention for cost savings
       environment: {
         PYTHONPATH: "/var/task",
         ENVIRONMENT: props.environment,

@@ -5,7 +5,6 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as targets from "aws-cdk-lib/aws-route53-targets";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as logs from "aws-cdk-lib/aws-logs";
-import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 
@@ -35,70 +34,6 @@ export class ApiEndpoint extends Construct {
       retention: logs.RetentionDays.ONE_WEEK,
     });
 
-    // Create WAF ACL with security rules
-    const webAcl = new wafv2.CfnWebACL(this, 'ApiWAFv2', {
-      defaultAction: { allow: {} },
-      scope: 'REGIONAL',
-      visibilityConfig: {
-        cloudWatchMetricsEnabled: true,
-        metricName: `${props.environment}-api-waf-metrics`,
-        sampledRequestsEnabled: true,
-      },
-      rules: [
-        // Rate limiting rule
-        {
-          name: 'RateLimit',
-          priority: 1,
-          action: { block: {} },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${props.environment}-rate-limit`,
-            sampledRequestsEnabled: true,
-          },
-          statement: {
-            rateBasedStatement: {
-              aggregateKeyType: 'IP',
-              limit: props.rateLimitPerMinute || 2000
-            }
-          }
-        },
-        // SQL injection protection
-        {
-          name: 'SQLInjectionProtection',
-          priority: 2,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              name: 'AWSManagedRulesSQLiRuleSet',
-              vendorName: 'AWS'
-            }
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${props.environment}-sql-injection`,
-            sampledRequestsEnabled: true,
-          }
-        },
-        // Common attack patterns
-        {
-          name: 'CommonRules',
-          priority: 3,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              name: 'AWSManagedRulesCommonRuleSet',
-              vendorName: 'AWS'
-            }
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: `${props.environment}-common-attacks`,
-            sampledRequestsEnabled: true,
-          }
-        }
-      ]
-    });
-
     // Create API Gateway
     this.api = new apigateway.RestApi(this, "Api", {
       restApiName: props.apiName,
@@ -121,8 +56,8 @@ export class ApiEndpoint extends Construct {
         accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
         methodOptions: {
           '/*/*': {  // This applies to all resources and methods
-            throttlingBurstLimit: Math.min(5000, props.rateLimitPerMinute || 2000),
-            throttlingRateLimit: props.rateLimitPerMinute || 2000
+            throttlingBurstLimit: Math.min(2000, props.rateLimitPerMinute || 1000),
+            throttlingRateLimit: props.rateLimitPerMinute || 1000
           }
         }
       },
@@ -158,10 +93,19 @@ export class ApiEndpoint extends Construct {
       ),
     });
 
-    // Associate WAF web ACL with the API Gateway
-    new wafv2.CfnWebACLAssociation(this, 'APIGatewayWAFAssociation', {
-      resourceArn: this.api.deploymentStage.stageArn,
-      webAclArn: webAcl.attrArn
+    // Add security headers to all responses
+    const responseParameters = {
+      'method.response.header.Strict-Transport-Security': true,
+      'method.response.header.X-Content-Type-Options': true,
+      'method.response.header.X-Frame-Options': true,
+    };
+
+    // Apply security headers to all methods
+    this.api.methods.forEach(method => {
+      method.addMethodResponse({
+        statusCode: '200',
+        responseParameters,
+      });
     });
 
     // Create health check endpoint

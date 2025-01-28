@@ -13,14 +13,14 @@ export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BackendStackProps) {
     super(scope, id);
 
-    // Create VPC for Lambda function
+    // Create VPC for Lambda function with minimal NAT costs
     const vpc = new ec2.Vpc(this, "LambdaVPC", {
       maxAzs: 2,
-      natGateways: 1,
+      natGateways: 0,  // Remove NAT Gateway to reduce costs
       subnetConfiguration: [
         {
           name: 'Private',
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,  // Use isolated subnet since we don't need internet access
           cidrMask: 24,
         },
         {
