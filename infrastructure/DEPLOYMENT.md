@@ -1,37 +1,61 @@
 # Stardex Deployment Guide
 
-This guide explains how to set up and configure the CI/CD pipeline for Stardex using GitHub Actions.
+## Table of Contents 🗂️
+
+- [Prerequisites](#prerequisites)
+- [AWS Configuration](#aws-configuration)
+- [GitHub Configuration](#github-configuration)
+- [Pipeline Stages](#pipeline-stages)
+- [Manual Deployment](#manual-deployment)
+- [Infrastructure Details](#infrastructure-details)
+- [Monitoring and Logs](#monitoring-and-logs)
+- [Security Configuration](#security-configuration)
+- [Cost Management](#cost-management)
+- [Troubleshooting](#troubleshooting)
+- [Rollback Procedures](#rollback-procedures)
+- [Maintenance](#maintenance)
 
 ## Prerequisites
 
-1. AWS Account Setup
+1. **AWS Account Setup**
 
    - AWS Account with administrator access
    - Route53 hosted zone for bjornmelin.io domain
 
-2. GitHub Repository Settings
-   - Create a "production" environment in repository settings
+2. **GitHub Repository Settings**
+
+   - Create a "production" environment
    - Configure environment protection rules
    - Set up required secrets
 
-## AWS Configuration Steps
+3. **Local Development Tools**
+   ```bash
+   # Verify installations
+   node --version  # Should be 20.x
+   aws --version   # AWS CLI v2
+   gh --version    # GitHub CLI
+   ```
+
+## AWS Configuration
+
+### 1. OIDC Provider Setup
+
+```mermaid
+sequenceDiagram
+    GitHub Actions->>AWS STS: Request temporary credentials
+    AWS STS->>OIDC Provider: Validate token
+    OIDC Provider->>GitHub Actions: Confirm identity
+    AWS STS->>GitHub Actions: Issue credentials
+```
 
 1. Create OIDC Provider:
 
 ```bash
-# Get your GitHub repository's OIDC provider URL
+# Provider URL
 https://token.actions.githubusercontent.com
 ```
 
-2. Create IAM OIDC Provider:
-
-   - Go to AWS IAM Console
-   - Navigate to "Identity Providers"
-   - Add provider:
-     - Provider URL: `https://token.actions.githubusercontent.com`
-     - Audience: `sts.amazonaws.com`
-
-3. Create GitHub Actions Role:
+2. Configure Trust Relationship:
 
 ```json
 {
@@ -56,73 +80,120 @@ https://token.actions.githubusercontent.com
 }
 ```
 
-4. Add Required IAM Permissions:
-   - CloudFormation full access
-   - S3 full access
-   - CloudFront full access
-   - Route53 full access
-   - Lambda full access
-   - API Gateway full access
-   - Certificate Manager full access
-   - CloudWatch full access
-   - IAM role and policy management
+### 2. Required IAM Permissions
 
-## GitHub Repository Configuration
-
-1. Configure Environment:
-
-```bash
-# Go to repository settings → Environments
-# Create new environment: "production"
+```mermaid
+graph TB
+    GHA[GitHub Actions Role] --> CF[CloudFormation]
+    GHA --> S3[S3]
+    GHA --> R53[Route53]
+    GHA --> Lambda[Lambda]
+    GHA --> APIG[API Gateway]
+    GHA --> ACM[Certificate Manager]
+    GHA --> CW[CloudWatch]
+    GHA --> IAM[IAM]
 ```
 
-2. Add Required Secrets:
+Required permissions:
+
+- CloudFormation full access
+- S3 full access
+- Route53 full access
+- Lambda full access
+- API Gateway full access
+- Certificate Manager full access
+- CloudWatch full access
+- IAM role and policy management
+
+## GitHub Configuration
+
+1. Environment Setup:
 
 ```bash
-# Go to repository settings → Secrets and variables → Actions
-AWS_ROLE_ARN="arn:aws:iam::<AWS-ACCOUNT-ID>:role/GithubActionsRole"
+# Create production environment
+gh environment create production
 ```
 
-3. Configure Branch Protection:
-   - Go to repository settings → Branches
-   - Add rule for `main` branch
+2. Required Secrets:
+
+```bash
+# Add AWS role ARN
+gh secret set AWS_ROLE_ARN --env production --body "arn:aws:iam::<AWS-ACCOUNT-ID>:role/GithubActionsRole"
+```
+
+3. Branch Protection:
    - Require pull request reviews
-   - Require status checks to pass
-   - Include administrators in restrictions
+   - Require status checks
+   - Include administrators
 
 ## Pipeline Stages
 
-1. Test Stage:
+```mermaid
+graph TB
+    subgraph Test
+        UT[Unit Tests] --> Lint[Linting]
+        Lint --> CDK[CDK Tests]
+    end
 
-   - Frontend unit tests and linting
-   - Backend Python tests
-   - Infrastructure CDK tests
+    subgraph Deploy
+        DNS[DNS Stack] --> Storage[Storage Stack]
+        Storage --> Backend[Backend Stack]
+        Backend --> Monitor[Monitoring Stack]
+    end
 
-2. Deploy Infrastructure:
+    subgraph Validate
+        Health[Health Checks] --> API[API Tests]
+        API --> Notify[Notifications]
+    end
 
-   - DNS stack with certificate validation
-   - Storage stack for frontend hosting
-   - Backend stack for API and Lambda
-   - Deployment permissions
-   - Monitoring and alerts
+    Test --> Deploy
+    Deploy --> Validate
+```
 
-3. Deploy Application:
+## Infrastructure Details
 
-   - Build and deploy frontend
-   - Deploy backend Lambda function
-   - Configure API Gateway
+### Network Architecture
 
-4. Validation:
-   - Health checks for frontend
-   - API endpoint validation
-   - Success/failure notifications
+```mermaid
+graph TB
+    subgraph VPC
+        subgraph Private Subnet
+            Lambda[Lambda 256MB]
+        end
+        subgraph Public Subnet
+            IGW[Internet Gateway]
+        end
+    end
+
+    Client --> APIG[API Gateway]
+    APIG --> Lambda
+```
+
+Cost-Optimized Configuration:
+
+- No NAT Gateway (cost saving)
+- Isolated private subnet
+- Optimized Lambda settings
+  - Memory: 256MB
+  - Timeout: 10 seconds
+- 3-day log retention
+- Rate limiting: 1000 req/min
+
+### Security Measures
+
+- TLS 1.2 enforcement
+- Security headers:
+  - Strict-Transport-Security
+  - X-Content-Type-Options
+  - X-Frame-Options
+- CORS configuration
+- VPC isolation
+- API rate limiting
 
 ## Manual Deployment
 
-If needed, you can manually deploy components:
-
 ```bash
-# Deploy infrastructure
+# Initial deployment
 cd infrastructure
 npm install
 npm run deploy:dns
@@ -131,8 +202,8 @@ npm run deploy:backend
 npm run deploy:deployment
 npm run deploy:monitoring
 
-# Deploy frontend
-cd frontend
+# Frontend deployment
+cd ../frontend
 npm install
 npm run build
 aws s3 sync out/ s3://<BUCKET_NAME>/
@@ -143,97 +214,170 @@ aws cloudfront create-invalidation --distribution-id <DISTRIBUTION_ID> --paths "
 
 ## Monitoring and Logs
 
-1. CloudWatch Dashboard:
+### 1. CloudWatch Dashboard
 
-   - Frontend metrics
-   - Backend performance
-   - API Gateway stats
-   - Custom alarms
+```mermaid
+graph LR
+    subgraph Metrics
+        Lambda --> CW[CloudWatch]
+        APIG[API Gateway] --> CW
+        CF[CloudFront] --> CW
+    end
 
-2. Access Logs:
-   - CloudFront logs in S3
-   - API Gateway logs
-   - Lambda function logs
+    subgraph Alerts
+        CW --> Alarms
+        Alarms --> Email
+    end
+```
+
+Monitored Metrics:
+
+- API Gateway:
+  - Request count
+  - Latency
+  - Error rates
+- Lambda:
+  - Invocations
+  - Duration
+  - Error rate
+  - Memory usage
+- CloudFront:
+  - Request count
+  - Cache hit ratio
+  - Error rates
+
+### 2. Log Access
+
+- CloudWatch Log Groups (3-day retention)
+- API Gateway access logs
+- Lambda function logs
+- CloudFront logs in S3
+
+## Cost Management
+
+Estimated Monthly Costs: $2-6/month
+
+```mermaid
+pie title Cost Distribution
+    "API Gateway" : 1
+    "Lambda" : 2
+    "CloudWatch" : 0.5
+    "Other" : 0.5
+```
+
+Cost Optimization Measures:
+
+1. Removed NAT Gateway (~$32/month savings)
+2. Optimized Lambda configuration
+3. Reduced log retention
+4. Using isolated subnet
+5. Removed WAF (~$5/month savings)
 
 ## Troubleshooting
 
-1. Certificate Validation:
+### 1. Certificate Issues
 
-   - Can take up to 30 minutes
-   - Verify DNS records in Route53
+```bash
+# Check certificate status
+aws acm describe-certificate --certificate-arn <CERT_ARN>
 
-2. CloudFront Issues:
+# Verify DNS records
+aws route53 list-resource-record-sets --hosted-zone-id <ZONE_ID>
+```
 
-   - Distribution updates take 5-15 minutes
-   - Check origin configuration
-   - Verify SSL certificate status
+### 2. CloudFront Issues
 
-3. GitHub Actions:
+```bash
+# Check distribution status
+aws cloudfront get-distribution --id <DIST_ID>
 
-   - Check AWS role permissions
-   - Verify environment secrets
-   - Review workflow logs
+# Invalidate cache
+aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths "/*"
+```
 
-4. API Gateway:
-   - Check CORS configuration
-   - Verify domain name setup
-   - Review Lambda integration
+### 3. API Gateway
+
+```bash
+# Test endpoint
+curl -v https://api.<your-domain>/health
+
+# Check logs
+aws logs tail /aws/api-gateway/<api-name>
+```
+
+### 4. Lambda Issues
+
+```bash
+# View logs
+aws logs tail /aws/lambda/<function-name>
+
+# Test function
+aws lambda invoke --function-name <function-name> output.json
+```
 
 ## Rollback Procedures
 
-1. Frontend Rollback:
+### 1. Frontend Rollback
 
 ```bash
-# Revert to previous S3 version
+# Revert to previous version
 aws s3 cp s3://<BUCKET_NAME>/<VERSION> s3://<BUCKET_NAME> --recursive
 
-# Invalidate CloudFront
-aws cloudfront create-invalidation --distribution-id <DISTRIBUTION_ID> --paths "/*"
+# Invalidate cache
+aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths "/*"
 ```
 
-2. Infrastructure Rollback:
+### 2. Infrastructure Rollback
 
 ```bash
 # Destroy specific stack
 npm run cdk destroy prod-stardex-<stack-name>
 
-# Destroy all stacks
+# Full rollback
 npm run destroy:all
 ```
 
-## Security Considerations
-
-1. AWS Security:
-
-   - OIDC authentication only
-   - Least privilege permissions
-   - Resource encryption
-   - HTTPS only
-
-2. Application Security:
-
-   - CORS configuration
-   - API authorization
-   - Content security headers
-   - Rate limiting
-
-3. Monitoring:
-   - Error rate alarms
-   - Performance metrics
-   - Security group changes
-   - API usage alerts
-
 ## Maintenance
 
-1. Regular Tasks:
+### Regular Tasks
 
-   - Monitor SSL certificate expiration
-   - Review CloudWatch alarms
-   - Check S3 bucket usage
-   - Analyze API Gateway metrics
+1. **Weekly**
 
-2. Updates:
-   - Keep dependencies current
-   - Review security patches
-   - Update Node.js/Python versions
-   - Check for AWS service updates
+   - Review CloudWatch metrics
+   - Check error rates
+   - Verify API performance
+
+2. **Monthly**
+
+   - Review cost allocation
+   - Update dependencies
+   - Security patches
+
+3. **Quarterly**
+   - SSL certificate review
+   - Performance optimization
+   - Architecture review
+   - Cost optimization review
+
+### Best Practices
+
+1. **Deployment**
+
+   - Use pull requests
+   - Run full test suite
+   - Deploy during low-traffic periods
+   - Always have rollback plan
+
+2. **Monitoring**
+
+   - Set up alerts for:
+     - Error rate spikes
+     - Unusual traffic patterns
+     - Cost anomalies
+     - Performance degradation
+
+3. **Security**
+   - Regular security audits
+   - Update dependencies
+   - Review IAM permissions
+   - Monitor security groups

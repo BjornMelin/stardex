@@ -2,6 +2,23 @@
 
 CDK-based infrastructure for the Stardex application with automated setup and deployment.
 
+## Table of Contents 🗂️
+
+- [Quick Start](#quick-start)
+- [Architecture Overview](#architecture-overview)
+  - [Component Diagram](#component-diagram)
+  - [Network Architecture](#network-architecture)
+  - [Stack Details](#stack-details)
+  - [Reusable Constructs](#reusable-constructs)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Monitoring](#monitoring)
+- [Security](#security)
+- [Cost Optimization](#cost-optimization)
+- [Maintenance](#maintenance)
+- [Contributing](#contributing)
+- [Additional Documentation](#additional-documentation)
+
 ## Quick Start
 
 ```bash
@@ -23,48 +40,94 @@ The bootstrap script will:
 5. Configure GitHub environment and secrets
 6. Create initial infrastructure commit
 
-## Architecture
+## Architecture Overview
 
-### Stacks
+### Component Diagram
 
-1. Bootstrap Stack (`prod-stardex-bootstrap`)
+```mermaid
+graph TB
+    subgraph Frontend
+        CF[CloudFront] --> S3[S3 Bucket]
+    end
+
+    subgraph API
+        APIG[API Gateway] --> Lambda
+        Lambda --> VPC[VPC Private Subnet]
+    end
+
+    subgraph DNS
+        R53[Route 53] --> CF
+        R53 --> APIG
+    end
+
+    subgraph Monitoring
+        CW[CloudWatch] --> Lambda
+        CW --> APIG
+        CW --> CF
+    end
+
+    Client[Client] --> R53
+```
+
+### Network Architecture
+
+```mermaid
+graph TB
+    subgraph VPC
+        subgraph Private Subnet
+            Lambda[Lambda Function]
+        end
+        subgraph Public Subnet
+            IGW[Internet Gateway]
+        end
+    end
+
+    APIG[API Gateway] --> Lambda
+    Lambda --> Services[AWS Services]
+```
+
+### Stack Details
+
+1. **Bootstrap Stack** (`prod-stardex-bootstrap`)
 
    - GitHub OIDC provider
    - IAM roles for deployment
    - Automated setup
 
-2. DNS Stack (`prod-stardex-dns`)
+2. **DNS Stack** (`prod-stardex-dns`)
 
    - SSL Certificate
    - Route53 configuration
 
-3. Storage Stack (`prod-stardex-storage`)
+3. **Storage Stack** (`prod-stardex-storage`)
 
    - S3 bucket for frontend
    - CloudFront distribution
    - Security configuration
 
-4. Backend Stack (`prod-stardex-backend`)
+4. **Backend Stack** (`prod-stardex-backend`)
 
-   - FastAPI Lambda function
-   - API Gateway
+   - FastAPI Lambda function (256MB memory, 10s timeout)
+   - API Gateway with rate limiting
    - Custom domain
+   - VPC with isolated private subnet (cost-optimized)
 
-5. Deployment Stack (`prod-stardex-deployment`)
+5. **Deployment Stack** (`prod-stardex-deployment`)
 
    - GitHub Actions permissions
    - Deployment configuration
 
-6. Monitoring Stack (`prod-stardex-monitoring`)
+6. **Monitoring Stack** (`prod-stardex-monitoring`)
    - CloudWatch dashboard
    - Custom metrics
    - Alarms
+   - 3-day log retention (cost-optimized)
 
 ### Reusable Constructs
 
 - `StaticWebsite`: S3 + CloudFront configuration
-- `ApiEndpoint`: API Gateway setup
-- `LambdaFunction`: Standardized Lambda
+- `ApiEndpoint`: API Gateway setup with security headers
+- `LambdaFunction`: Optimized Lambda configuration
 - `MonitoringDashboard`: Metrics and alarms
 
 ## Development
@@ -159,19 +222,50 @@ npm run deploy:monitoring
 
 ## Monitoring
 
-- CloudWatch dashboard: [AWS Console Link]
-- Custom metrics for all components
+```mermaid
+graph LR
+    subgraph Metrics
+        API[API Metrics] --> Dashboard
+        Lambda[Lambda Metrics] --> Dashboard
+        CF[CloudFront Metrics] --> Dashboard
+    end
+
+    subgraph Alerts
+        Dashboard --> Alarms
+        Alarms --> SNS[SNS Topic]
+        SNS --> Email
+    end
+```
+
+- CloudWatch dashboard with key metrics
+- 3-day log retention
 - Automated alerts
 - Performance tracking
+- API Gateway metrics
+- Lambda performance metrics
 
 ## Security
 
+- Security headers (HSTS, X-Content-Type-Options, X-Frame-Options)
 - OIDC authentication
 - Least privilege permissions
 - Resource encryption
-- Security headers
 - CORS configuration
-- AWS best practices
+- Rate limiting (1000 req/min)
+- VPC isolation
+- TLS 1.2 enforcement
+
+## Cost Optimization
+
+Estimated monthly cost: $2-6/month
+
+Cost-saving measures:
+
+- Removed NAT Gateway (~$32/month savings)
+- Optimized Lambda configuration (256MB, 10s timeout)
+- Reduced log retention to 3 days
+- Using isolated private subnet
+- Removed WAF (trading off advanced protection for ~$5/month savings)
 
 ## Maintenance
 
