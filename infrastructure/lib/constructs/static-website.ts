@@ -37,8 +37,20 @@ export class StaticWebsite extends Construct {
         {
           enabled: true,
           noncurrentVersionExpiration: cdk.Duration.days(30),
+          noncurrentVersionTransitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(7)
+            }
+          ],
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(30)
+            }
+          ],
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
-        },
+        }
       ],
     });
 
@@ -52,8 +64,20 @@ export class StaticWebsite extends Construct {
       enforceSSL: true,
       lifecycleRules: [
         {
-          expiration: cdk.Duration.days(30),
-        },
+          enabled: true,
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INFREQUENT_ACCESS,
+              transitionAfter: cdk.Duration.days(7)
+            },
+            {
+              storageClass: s3.StorageClass.GLACIER,
+              transitionAfter: cdk.Duration.days(30)
+            }
+          ],
+          expiration: cdk.Duration.days(90),
+          abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
+        }
       ],
     });
 

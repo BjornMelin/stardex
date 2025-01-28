@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
 import { BackendStackProps } from "../types/stack-props";
 import { LambdaFunction } from "../constructs/lambda-function";
@@ -12,7 +13,26 @@ export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BackendStackProps) {
     super(scope, id);
 
-    // Create FastAPI Lambda function
+    // Create VPC for Lambda function
+    const vpc = new ec2.Vpc(this, "LambdaVPC", {
+      maxAzs: 2,
+      natGateways: 1,
+      subnetConfiguration: [
+        {
+          name: 'Private',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+          cidrMask: 24,
+        },
+        {
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+          cidrMask: 24,
+        }
+      ]
+    });
+
+
+    // Create FastAPI Lambda function with VPC and Secrets
     const backendFunction = new LambdaFunction(this, "FastAPIFunction", {
       functionName: "stardex-backend",
       description: "FastAPI backend for Stardex application",
@@ -22,6 +42,10 @@ export class BackendStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_11,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
+      vpc: vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+      },
       environment_vars: {
         CORS_ORIGINS: `https://${props.domainName}`,
       },
@@ -69,5 +93,6 @@ export class BackendStack extends cdk.Stack {
       description: "Lambda Function Name",
       exportName: `${props.environment}-stardex-lambda-name`,
     });
+
   }
 }
