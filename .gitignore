@@ -121,5 +121,8 @@ cdk.out
 infrastructure/cdk.out/
 **/cdk-outputs.json
 
+dist/
+
+
 # repomix
 repomix-output.txt
