@@ -11,7 +11,7 @@
         "cdk": "cdk",
         "bootstrap:aws": "cdk bootstrap",
         "bootstrap:stack": "cdk deploy prod-stardex-bootstrap --require-approval never",
-        "bootstrap": "npm run bootstrap:aws && npm run bootstrap:stack",
+        "bootstrap": "pnpm bootstrap:aws && pnpm bootstrap:stack",
         "deploy:dns": "cdk deploy prod-stardex-dns --require-approval never",
         "deploy:storage": "cdk deploy prod-stardex-storage --require-approval never",
         "deploy:backend": "cdk deploy prod-stardex-backend --require-approval never",

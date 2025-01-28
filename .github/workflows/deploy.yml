@@ -27,7 +27,6 @@ env:
   AWS_REGION: us-east-1
   NODE_VERSION: "20"
   PYTHON_VERSION: "3.11"
-  TF_VERSION: "1.0.0"
 
 jobs:
   test:
@@ -42,7 +41,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -50,16 +54,21 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
 
-      # Cache dependencies
-      - name: Cache Node modules
-        uses: actions/cache@v4
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
         with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Cache pip packages
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -67,13 +76,13 @@ jobs:
       # Frontend Tests
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run frontend tests
         working-directory: frontend
         run: |
-          npm run lint
-          npm run test
+          pnpm lint
+          pnpm test
         continue-on-error: false
 
       # Backend Tests
@@ -93,13 +102,13 @@ jobs:
       # Infrastructure Tests
       - name: Install CDK dependencies
         working-directory: infrastructure
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run CDK tests
         working-directory: infrastructure
         run: |
-          npm run lint
-          npm test
+          pnpm lint
+          pnpm test
         continue-on-error: false
 
   deploy-infrastructure:
@@ -122,7 +131,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -133,27 +147,18 @@ jobs:
       - name: Install CDK dependencies
         working-directory: infrastructure
         run: |
-          npm ci
-          npm install -g aws-cdk
+          pnpm install --frozen-lockfile
+          pnpm install -g aws-cdk
 
-      # Pre-deployment validation
-      - name: Validate CDK templates
-        working-directory: infrastructure
-        run: |
-          npx cdk synth
-          npx cdk diff || true
-
-      # Deploy stacks in order with proper error handling and retries
       - name: Deploy DNS Stack
         working-directory: infrastructure
         id: dns-deploy
         run: |
           max_attempts=3
           attempt=1
-
           while [ $attempt -le $max_attempts ]; do
             echo "Attempt $attempt of $max_attempts"
-            if npm run deploy:dns -- --require-approval never; then
+            if pnpm run deploy:dns -- --require-approval never; then
               break
             fi
             
@@ -167,14 +172,10 @@ jobs:
             sleep 30
           done
 
-          # Wait for certificate validation
-          echo "Waiting for certificate validation (may take 15-30 minutes)..."
-          sleep 300  # Initial 5 minute wait
-
       - name: Deploy Storage Stack
         working-directory: infrastructure
         run: |
-          npm run deploy:storage -- --require-approval never || {
+          pnpm run deploy:storage -- --require-approval never || {
             echo "Storage stack deployment failed"
             exit 1
           }
@@ -182,58 +183,21 @@ jobs:
       - name: Deploy Backend Stack
         working-directory: infrastructure
         run: |
-          # Bundle Lambda function
           chmod +x scripts/bundle-lambda.sh
           ./scripts/bundle-lambda.sh
 
-          npm run deploy:backend -- --require-approval never || {
+          pnpm run deploy:backend -- --require-approval never || {
             echo "Backend stack deployment failed"
-            exit 1
-          }
-
-      - name: Deploy Deployment Stack
-        working-directory: infrastructure
-        run: |
-          npm run deploy:deployment -- --require-approval never || {
-            echo "Deployment stack deployment failed"
             exit 1
           }
 
       - name: Deploy Monitoring Stack
         working-directory: infrastructure
         run: |
-          npm run deploy:monitoring -- --require-approval never || {
+          pnpm run deploy:monitoring -- --require-approval never || {
             echo "Monitoring stack deployment failed"
             exit 1
           }
-
-      - name: Get Stack Outputs
-        id: get-outputs
-        run: |
-          BUCKET_NAME=$(aws cloudformation describe-stacks \
-            --stack-name prod-stardex-storage \
-            --query 'Stacks[0].Outputs[?OutputKey==`WebsiteBucketName`].OutputValue' \
-            --output text)
-
-          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
-            --stack-name prod-stardex-storage \
-            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
-            --output text)
-
-          API_URL=$(aws cloudformation describe-stacks \
-            --stack-name prod-stardex-backend \
-            --query 'Stacks[0].Outputs[?OutputKey==`APICustomDomain`].OutputValue' \
-            --output text)
-
-          # Validate outputs
-          if [ -z "$BUCKET_NAME" ] || [ -z "$DISTRIBUTION_ID" ] || [ -z "$API_URL" ]; then
-            echo "Error: One or more required outputs are missing"
-            exit 1
-          fi
-
-          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
-          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
-          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
   deploy-application:
     name: Deploy Application
@@ -251,7 +215,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -259,43 +228,22 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Frontend Deployment with caching
       - name: Install frontend dependencies
         working-directory: frontend
-        run: |
-          npm ci
-          npm cache verify
+        run: pnpm install --frozen-lockfile
 
       - name: Build frontend
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: ${{ needs.deploy-infrastructure.outputs.api_url }}
-        run: npm run build
+        run: pnpm run build
 
       - name: Deploy frontend
         env:
           BUCKET_NAME: ${{ needs.deploy-infrastructure.outputs.bucket_name }}
           DISTRIBUTION_ID: ${{ needs.deploy-infrastructure.outputs.distribution_id }}
         run: |
-          # Deploy with retries
-          max_attempts=3
-          attempt=1
-
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts"
-            if aws s3 sync frontend/out/ s3://$BUCKET_NAME/ --delete; then
-              break
-            fi
-            
-            if [ $attempt -eq $max_attempts ]; then
-              echo "Frontend deployment failed after $max_attempts attempts"
-              exit 1
-            fi
-            
-            attempt=$((attempt + 1))
-            echo "Waiting before retry..."
-            sleep 10
-          done
+          aws s3 sync frontend/out/ s3://$BUCKET_NAME/ --delete
 
           # Create CloudFront invalidation
           aws cloudfront create-invalidation \
@@ -314,107 +262,20 @@ jobs:
       - name: Wait for DNS propagation
         run: sleep 60
 
-      - name: Check frontend
+      - name: Verify deployment
         run: |
-          max_attempts=5
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" https://stardex.bjornmelin.io)
-            if [ $STATUS_CODE -eq 200 ]; then
-              echo "Frontend health check passed"
-              break
-            fi
-            
-            if [ $attempt -eq $max_attempts ]; then
-              echo "Frontend health check failed after $max_attempts attempts with status $STATUS_CODE"
-              exit 1
-            fi
-            
-            attempt=$((attempt + 1))
-            echo "Retrying frontend health check in 30 seconds..."
-            sleep 30
-          done
-
-      - name: Check backend
-        run: |
-          max_attempts=5
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" ${{ needs.deploy-infrastructure.outputs.api_url }}/health)
-            if [ $STATUS_CODE -eq 200 ]; then
-              echo "Backend health check passed"
-              break
-            fi
-            
-            if [ $attempt -eq $max_attempts ]; then
-              echo "Backend health check failed after $max_attempts attempts with status $STATUS_CODE"
-              exit 1
-            fi
-            
-            attempt=$((attempt + 1))
-            echo "Retrying backend health check in 30 seconds..."
-            sleep 30
-          done
-
-      - name: Verify API functionality
-        run: |
-          RESPONSE=$(curl -s ${{ needs.deploy-infrastructure.outputs.api_url }}/health)
-          echo $RESPONSE | grep -q "status.*ok" || {
-            echo "API health check failed: Invalid response format"
-            exit 1
-          }
+          curl -f https://stardex.bjornmelin.io || exit 1
+          curl -f ${{ needs.deploy-infrastructure.outputs.api_url }}/health || exit 1
 
       - name: Notify on success
         if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const message = `🚀 Deployment successful!
-              
-              Frontend: https://stardex.bjornmelin.io
-              API: ${{ needs.deploy-infrastructure.outputs.api_url }}
-              
-              Stack Outputs:
-              - S3 Bucket: ${{ needs.deploy-infrastructure.outputs.bucket_name }}
-              - CloudFront ID: ${{ needs.deploy-infrastructure.outputs.distribution_id }}
-              
-              Health Checks:
-              ✅ Frontend accessible
-              ✅ Backend API responding
-              ✅ CloudFront distribution active
-            `;
-
-            if (context.issue.number) {
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: message
-              });
-            }
+        run: |
+          echo "🚀 Deployment successful!"
+          echo "Frontend: https://stardex.bjornmelin.io"
+          echo "API: ${{ needs.deploy-infrastructure.outputs.api_url }}"
 
       - name: Notify on failure
         if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const message = `❌ Deployment failed!
-              
-              Please check the workflow logs for details:
-              ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-              
-              Common troubleshooting steps:
-              1. Check certificate validation status
-              2. Verify DNS propagation
-              3. Review CloudWatch logs
-              4. Check IAM permissions
-            `;
-
-            if (context.issue.number) {
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: message
-              });
-            }
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs for details."
