@@ -86,7 +86,7 @@ Stardex helps you explore and understand your GitHub starred repositories throug
 
 ## 🏗️ Architecture
 
-The application is structured as a monorepo with two main services:
+The application is structured as a monorepo with three main components:
 
 ### 🎨 Frontend Service (Next.js)
 
@@ -104,6 +104,158 @@ The application is structured as a monorepo with two main services:
 - Provides RESTful API endpoints
 - Efficient data processing with sparse matrices
 - Parallel processing capabilities
+
+### ☁️ Infrastructure (AWS CDK)
+
+- Located in `/infrastructure`
+- Cost-optimized AWS architecture (~$2-6/month)
+- Automated deployment via GitHub Actions
+
+```mermaid
+graph TB
+    subgraph Frontend
+        CF[CloudFront] --> S3[S3 Bucket]
+    end
+
+    subgraph API
+        APIG[API Gateway] --> Lambda
+        Lambda --> VPC[VPC Private Subnet]
+    end
+
+    subgraph DNS
+        R53[Route 53] --> CF
+        R53 --> APIG
+    end
+
+    Client[Client] --> R53
+```
+
+#### Key Infrastructure Components
+
+- **Compute**: Lambda functions (256MB, 10s timeout)
+- **API**: Regional API Gateway with rate limiting
+- **Storage**: S3 for static assets
+- **CDN**: CloudFront distribution
+- **Networking**: VPC with isolated private subnets
+- **DNS**: Route53 with SSL certificates
+- **Monitoring**: CloudWatch with 3-day retention
+
+#### Security Features
+
+- TLS 1.2 enforcement
+- Security headers (HSTS, X-Content-Type-Options)
+- CORS configuration
+- Rate limiting (1000 req/min)
+- VPC isolation
+- IAM least privilege access
+
+#### Cost Optimization
+
+- No NAT Gateway (cost saving)
+- Optimized Lambda configuration
+- Reduced log retention
+- CloudFront caching
+- Efficient API Gateway settings
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+1. **Required Tools:**
+
+   ```bash
+   node -v  # v20.x
+   python -v # v3.11
+   aws --version  # For infrastructure deployment
+   ```
+
+2. **AWS Setup:**
+
+   - AWS account with admin access
+   - Domain name for deployment
+   - Route53 hosted zone configured
+
+3. **GitHub Setup:**
+   - Fork the repository
+   - Configure repository secrets:
+     - `AWS_ROLE_ARN`: IAM role for deployments
+   - Enable GitHub Actions
+
+### Development Setup
+
+1. **Clone & Configure:**
+
+   ```bash
+   # Clone repository
+   git clone https://github.com/BjornMelin/stardex.git
+   cd stardex
+
+   # Set up environment variables
+   cp .env.example .env.local
+   # Edit .env.local with your settings
+   ```
+
+2. **Install Dependencies:**
+
+   ```bash
+   # Install dependencies
+   npm install
+   cd frontend && npm install
+   cd ../backend && poetry install
+   ```
+
+3. **Local Development:**
+
+   ```bash
+   # Run all services locally
+   npm run dev
+
+   # Or run individually
+   npm run dev:frontend  # http://localhost:3000
+   npm run dev:backend   # http://localhost:8000
+   ```
+
+### Production Deployment
+
+1. **Infrastructure:**
+
+   ```bash
+   cd infrastructure
+   npm install
+   npm run deploy:dns        # Set up DNS and SSL
+   npm run deploy:storage    # Configure S3 and CloudFront
+   npm run deploy:backend    # Deploy API and Lambda
+   npm run deploy:monitoring # Set up monitoring
+   ```
+
+2. **Application Deployment:**
+
+   - Push changes to main branch
+   - GitHub Actions will automatically:
+     - Run tests
+     - Deploy infrastructure changes
+     - Build and deploy frontend
+     - Deploy backend
+     - Validate deployment
+
+3. **Environment Variables:**
+
+   ```bash
+   # Frontend (.env.local)
+   NEXT_PUBLIC_API_URL=http://localhost:8000  # Local development
+   # NEXT_PUBLIC_API_URL=https://api.your-domain.com  # Production
+
+   # Infrastructure (.env)
+   AWS_REGION=us-east-1
+   DOMAIN_NAME=your-domain.com
+   ENVIRONMENT=production
+   ```
+
+4. **Post-Deployment:**
+   - Verify DNS propagation
+   - Test API endpoints
+   - Monitor CloudWatch logs
+   - Check CloudFront distribution
 
 ## 🚀 Getting Started
 
