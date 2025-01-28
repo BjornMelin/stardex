@@ -2,19 +2,24 @@
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { DnsStack } from "../lib/stacks/dns-stack";
-import { StorageStack } from "../lib/stacks/storage-stack";
 import { DeploymentStack } from "../lib/stacks/deployment-stack";
-import { MonitoringStack } from "../lib/stacks/monitoring-stack";
-import { BackendStack } from "../lib/stacks/backend-stack";
+import { ParentStack } from "../lib/stacks/parent-stack";
 import { BootstrapStack } from "../lib/stacks/bootstrap-stack";
 import { CONFIG, getStackName } from "../lib/constants";
 
 const app = new cdk.App();
 
 // Environment configuration
+// Base environment for most stacks
 const env = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION || "us-east-1",
+  region: process.env.CDK_DEFAULT_REGION || "us-west-1", // Default to us-west-1
+};
+
+// Special environment for resources that must be in us-east-1
+const usEastEnv = {
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: "us-east-1",
 };
 
 // Bootstrap Stack (deploy this first)
@@ -23,6 +28,7 @@ const bootstrapStack = new BootstrapStack(
   getStackName("bootstrap", "prod"),
   {
     env,
+    crossRegionReferences: true, // Enable cross-region references
     domainName: CONFIG.prod.domainName,
     rootDomainName: CONFIG.prod.rootDomainName,
     environment: CONFIG.prod.environment,
@@ -32,19 +38,17 @@ const bootstrapStack = new BootstrapStack(
 
 // DNS Stack (must be in us-east-1 for CloudFront)
 const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
-  env: {
-    ...env,
-    region: "us-east-1", // Force us-east-1 for CloudFront certificate
-  },
+  env: usEastEnv, // Use us-east-1 for CloudFront certificate
   domainName: CONFIG.prod.domainName,
   rootDomainName: CONFIG.prod.rootDomainName,
   environment: CONFIG.prod.environment,
   tags: CONFIG.tags,
 });
 
-// Storage Stack
-const storageStack = new StorageStack(app, getStackName("storage", "prod"), {
+// Parent Stack (contains storage, backend, and monitoring as nested stacks)
+const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
   env,
+  crossRegionReferences: true,
   domainName: CONFIG.prod.domainName,
   rootDomainName: CONFIG.prod.rootDomainName,
   environment: CONFIG.prod.environment,
@@ -53,65 +57,28 @@ const storageStack = new StorageStack(app, getStackName("storage", "prod"), {
   tags: CONFIG.tags,
 });
 
-// Backend Stack
-const backendStack = new BackendStack(app, getStackName("backend", "prod"), {
-  env,
-  domainName: CONFIG.prod.domainName,
-  rootDomainName: CONFIG.prod.rootDomainName,
-  environment: CONFIG.prod.environment,
-  certificate: dnsStack.certificate,
-  hostedZone: dnsStack.hostedZone,
-  tags: CONFIG.tags,
-});
-
-// Deployment Stack
+// Deployment Stack (references resources from parent stack)
 const deploymentStack = new DeploymentStack(
   app,
   getStackName("deployment", "prod"),
   {
     env,
+    crossRegionReferences: true,
     domainName: CONFIG.prod.domainName,
     rootDomainName: CONFIG.prod.rootDomainName,
     environment: CONFIG.prod.environment,
-    bucket: storageStack.bucket,
-    distribution: storageStack.distribution,
-    tags: CONFIG.tags,
-  }
-);
-
-// Monitoring Stack
-const monitoringStack = new MonitoringStack(
-  app,
-  getStackName("monitoring", "prod"),
-  {
-    env,
-    domainName: CONFIG.prod.domainName,
-    rootDomainName: CONFIG.prod.rootDomainName,
-    environment: CONFIG.prod.environment,
-    bucket: storageStack.bucket,
-    distribution: storageStack.distribution,
-    lambda: backendStack.lambda,
-    api: backendStack.api,
+    bucket: parentStack.storageConstruct.bucket,
+    distribution: parentStack.storageConstruct.distribution,
     tags: CONFIG.tags,
   }
 );
 
 // Stack dependencies
-storageStack.addDependency(dnsStack);
-backendStack.addDependency(dnsStack);
-deploymentStack.addDependency(storageStack);
-monitoringStack.addDependency(storageStack);
-monitoringStack.addDependency(backendStack);
+parentStack.addDependency(dnsStack);
+deploymentStack.addDependency(parentStack);
 
 // Add tags to all stacks
-const stacks = [
-  bootstrapStack,
-  dnsStack,
-  storageStack,
-  backendStack,
-  deploymentStack,
-  monitoringStack,
-];
+const stacks = [bootstrapStack, dnsStack, parentStack, deploymentStack];
 
 stacks.forEach((stack) => {
   cdk.Tags.of(stack).add("Project", "Stardex");

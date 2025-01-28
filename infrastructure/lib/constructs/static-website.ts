@@ -40,17 +40,17 @@ export class StaticWebsite extends Construct {
           noncurrentVersionTransitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7)
-            }
+              transitionAfter: cdk.Duration.days(7),
+            },
           ],
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(30)
-            }
+              transitionAfter: cdk.Duration.days(30),
+            },
           ],
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
-        }
+        },
       ],
     });
 
@@ -68,16 +68,16 @@ export class StaticWebsite extends Construct {
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7)
+              transitionAfter: cdk.Duration.days(7),
             },
             {
               storageClass: s3.StorageClass.GLACIER,
-              transitionAfter: cdk.Duration.days(30)
-            }
+              transitionAfter: cdk.Duration.days(30),
+            },
           ],
           expiration: cdk.Duration.days(90),
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(1),
-        }
+        },
       ],
     });
 
@@ -106,7 +106,6 @@ export class StaticWebsite extends Construct {
     // CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
-        // @ts-ignore - False positive deprecation warning, S3Origin is still the recommended approach
         origin: new origins.S3Origin(this.bucket, {
           originAccessIdentity,
         }),

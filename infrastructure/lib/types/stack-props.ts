@@ -13,14 +13,27 @@ export interface BaseStackProps extends cdk.StackProps {
   tags?: Record<string, string>;
 }
 
-export interface DnsStackProps extends BaseStackProps {}
-
-export interface StorageStackProps extends BaseStackProps {
+export interface ParentStackProps extends BaseStackProps {
   certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
 }
 
-export interface BackendStackProps extends BaseStackProps {
+export interface DnsStackProps extends BaseStackProps {}
+
+export interface StorageStackProps {
+  domainName: string;
+  rootDomainName: string;
+  environment: string;
+  tags?: Record<string, string>;
+  certificate: acm.ICertificate;
+  hostedZone: route53.IHostedZone;
+}
+
+export interface BackendStackProps {
+  domainName: string;
+  rootDomainName: string;
+  environment: string;
+  tags?: Record<string, string>;
   certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
 }
@@ -30,7 +43,11 @@ export interface DeploymentStackProps extends BaseStackProps {
   distribution: cloudfront.IDistribution;
 }
 
-export interface MonitoringStackProps extends BaseStackProps {
+export interface MonitoringStackProps {
+  domainName: string;
+  rootDomainName: string;
+  environment: string;
+  tags?: Record<string, string>;
   bucket: s3.IBucket;
   distribution: cloudfront.IDistribution;
   lambda?: lambda.IFunction;
