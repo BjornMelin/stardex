@@ -126,3 +126,7 @@ dist/
 
 # repomix
 repomix-output.txt
+
+# Lambda Layer
+layer-venv/
+layer/
