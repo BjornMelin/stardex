@@ -40,6 +40,7 @@ export class ParentStack extends cdk.Stack {
         certificate: props.certificate,
         hostedZone: props.hostedZone,
         tags: props.tags,
+        lambdaLayer: props.lambdaLayer,
       }
     );
 

@@ -16,6 +16,7 @@ export interface BaseStackProps extends cdk.StackProps {
 export interface ParentStackProps extends BaseStackProps {
   certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
+  lambdaLayer?: lambda.ILayerVersion;
 }
 
 export interface DnsStackProps extends BaseStackProps {}
@@ -36,6 +37,7 @@ export interface BackendStackProps {
   tags?: Record<string, string>;
   certificate: acm.ICertificate;
   hostedZone: route53.IHostedZone;
+  lambdaLayer?: lambda.ILayerVersion;
 }
 
 export interface DeploymentStackProps extends BaseStackProps {

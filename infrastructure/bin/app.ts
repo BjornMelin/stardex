@@ -5,6 +5,7 @@ import { DnsStack } from "../lib/stacks/dns-stack";
 import { DeploymentStack } from "../lib/stacks/deployment-stack";
 import { ParentStack } from "../lib/stacks/parent-stack";
 import { BootstrapStack } from "../lib/stacks/bootstrap-stack";
+import { LambdaLayerStack } from "../lib/stacks/lambda-layer-stack";
 import { CONFIG, getStackName } from "../lib/constants";
 
 const app = new cdk.App();
@@ -29,6 +30,8 @@ const bootstrapStack = new BootstrapStack(
   }
 );
 
+const layerStack = new LambdaLayerStack(app, "LambdaLayerStack", { env });
+
 // DNS Stack (in us-east-1 for CloudFront)
 const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
   env,
@@ -48,6 +51,7 @@ const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
   certificate: dnsStack.certificate,
   hostedZone: dnsStack.hostedZone,
   tags: CONFIG.tags,
+  lambdaLayer: layerStack.fastApiLayer,
 });
 
 // Deployment Stack (references resources from parent stack)

@@ -1,0 +1,57 @@
+name: Deploy Lambda Layer
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/requirements.txt'
+      - 'layer/**'
+      - '.github/workflows/deploy-layer.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          # Create layer directory structure
+          mkdir -p layer/python
+          # Install Python dependencies into layer
+          pip install -r backend/requirements.txt -t layer/python
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install CDK Dependencies
+        working-directory: infrastructure
+        run: npm ci
+
+      - name: Deploy Updated Layer
+        working-directory: infrastructure
+        run: |
+          npx cdk deploy LambdaLayerStack --require-approval never
+          # Deploy backend stack to pick up new layer version
+          npx cdk deploy "*BackendNested*" --require-approval never

@@ -22,6 +22,7 @@ export interface LambdaFunctionProps {
   secrets?: {
     [key: string]: secretsmanager.ISecret;
   };
+  layers?: lambda.ILayerVersion[];
 }
 
 /**
@@ -69,6 +70,7 @@ export class LambdaFunction extends Construct {
         })
       ] : undefined,
       tracing: lambda.Tracing.ACTIVE,
+      layers: props.layers,
     });
 
     // Add Secrets Manager integration if secrets are provided
