@@ -42,11 +42,11 @@ export class StaticWebsite extends Construct {
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7),
+              transitionAfter: cdk.Duration.days(30),
             },
             {
               storageClass: s3.StorageClass.GLACIER,
-              transitionAfter: cdk.Duration.days(30),
+              transitionAfter: cdk.Duration.days(60),
             },
           ],
           expiration: cdk.Duration.days(90),
@@ -74,13 +74,13 @@ export class StaticWebsite extends Construct {
           noncurrentVersionTransitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(7),
+              transitionAfter: cdk.Duration.days(30),
             },
           ],
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
-              transitionAfter: cdk.Duration.days(30),
+              transitionAfter: cdk.Duration.days(60),
             },
           ],
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
