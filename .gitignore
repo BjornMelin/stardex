@@ -129,4 +129,6 @@ repomix-output.txt
 
 # Lambda Layer
 layer-venv/
-layer/
+layer-base/
+layer-ml/
+layer/python/
