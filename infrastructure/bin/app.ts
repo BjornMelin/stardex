@@ -51,7 +51,8 @@ const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
   certificate: dnsStack.certificate,
   hostedZone: dnsStack.hostedZone,
   tags: CONFIG.tags,
-  lambdaLayer: layerStack.fastApiLayer,
+  apiLayer: layerStack.apiLayer,
+  mlLayer: layerStack.mlLayer,
 });
 
 // Deployment Stack (references resources from parent stack)

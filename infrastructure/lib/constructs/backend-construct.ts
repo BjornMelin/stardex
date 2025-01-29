@@ -52,7 +52,10 @@ export class BackendConstruct extends Construct {
       environment_vars: {
         CORS_ORIGINS: `https://${props.domainName}`,
       },
-      layers: props.lambdaLayer ? [props.lambdaLayer] : undefined,
+      layers: [
+        ...(props.apiLayer ? [props.apiLayer] : []),
+        ...(props.mlLayer ? [props.mlLayer] : []),
+      ],
     });
 
     // Create API Gateway with Lambda integration

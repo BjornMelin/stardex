@@ -4,23 +4,37 @@ import { Construct } from "constructs";
 import * as path from "path";
 
 export class LambdaLayerStack extends cdk.Stack {
-  public readonly fastApiLayer: lambda.LayerVersion;
+  public readonly apiLayer: lambda.LayerVersion;
+  public readonly mlLayer: lambda.LayerVersion;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Define the Lambda Layer
-    this.fastApiLayer = new lambda.LayerVersion(this, "FastAPILayer", {
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer")),
+    // Define the API Lambda Layer
+    this.apiLayer = new lambda.LayerVersion(this, "APILayer", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-base")),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
-      description: "FastAPI + Dependencies Layer",
-      removalPolicy: cdk.RemovalPolicy.RETAIN, // Prevent deletion on stack destroy
+      description: "FastAPI Dependencies Layer",
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    // Output the Layer ARN for reference
-    new cdk.CfnOutput(this, "LayerARN", {
-      value: this.fastApiLayer.layerVersionArn,
-      description: "ARN of the Lambda Layer",
+    // Define the ML Lambda Layer
+    this.mlLayer = new lambda.LayerVersion(this, "MLLayer", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-ml")),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
+      description: "Machine Learning Dependencies Layer",
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Output the Layer ARNs for reference
+    new cdk.CfnOutput(this, "APILayerARN", {
+      value: this.apiLayer.layerVersionArn,
+      description: "ARN of the API Lambda Layer",
+    });
+
+    new cdk.CfnOutput(this, "MLLayerARN", {
+      value: this.mlLayer.layerVersionArn,
+      description: "ARN of the ML Lambda Layer",
     });
   }
 }
