@@ -70,19 +70,23 @@ export class StaticWebsite extends Construct {
       lifecycleRules: [
         {
           enabled: true,
-          noncurrentVersionExpiration: cdk.Duration.days(30),
+          // Noncurrent versions: transition at 30 days, fully expire at 90 days
           noncurrentVersionTransitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
               transitionAfter: cdk.Duration.days(30),
             },
           ],
+          noncurrentVersionExpiration: cdk.Duration.days(90),
+
+          // Current versions: transition after 60 days
           transitions: [
             {
               storageClass: s3.StorageClass.INFREQUENT_ACCESS,
               transitionAfter: cdk.Duration.days(60),
             },
           ],
+
           abortIncompleteMultipartUploadAfter: cdk.Duration.days(7),
         },
       ],
@@ -150,7 +154,8 @@ export class StaticWebsite extends Construct {
     });
 
     // Add explicit dependency to ensure logs bucket exists before CloudFront distribution
-    const cfnDistribution = this.distribution.node.defaultChild as cloudfront.CfnDistribution;
+    const cfnDistribution = this.distribution.node
+      .defaultChild as cloudfront.CfnDistribution;
     cfnDistribution.addDependsOn(logBucketRef);
 
     // DNS record for the domain
@@ -218,7 +223,8 @@ export class StaticWebsite extends Construct {
           override: true,
         },
         referrerPolicy: {
-          referrerPolicy: cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          referrerPolicy:
+            cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
           override: true,
         },
         xssProtection: {
