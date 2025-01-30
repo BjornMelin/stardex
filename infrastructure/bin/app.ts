@@ -30,7 +30,9 @@ const bootstrapStack = new BootstrapStack(
   }
 );
 
-const layerStack = new LambdaLayerStack(app, "LambdaLayerStack", { env });
+const layerStack = new LambdaLayerStack(app, getStackName("layer", "prod"), {
+  env,
+});
 
 // DNS Stack (in us-east-1 for CloudFront)
 const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {

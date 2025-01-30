@@ -4,6 +4,7 @@ import { ParentStackProps } from "../types/stack-props";
 import { StorageConstruct } from "../constructs/storage-construct";
 import { BackendConstruct } from "../constructs/backend-construct";
 import { MonitoringConstruct } from "../constructs/monitoring-construct";
+import { getStackName } from "../constants";
 
 export class ParentStack extends cdk.Stack {
   public readonly storageConstruct: StorageConstruct;
@@ -14,10 +15,13 @@ export class ParentStack extends cdk.Stack {
     super(scope, id, props);
 
     // Create the storage stack as a nested stack with proper scoping
-    const storageNestedStack = new cdk.NestedStack(this, "StorageNested");
+    const storageNestedStack = new cdk.NestedStack(
+      this,
+      getStackName("storage", props.environment)
+    );
     this.storageConstruct = new StorageConstruct(
       storageNestedStack,
-      "Storage",
+      getStackName("storage", props.environment),
       {
         domainName: props.domainName,
         rootDomainName: props.rootDomainName,
@@ -29,10 +33,13 @@ export class ParentStack extends cdk.Stack {
     );
 
     // Create the backend stack as a nested stack with proper scoping
-    const backendNestedStack = new cdk.NestedStack(this, "BackendNested");
+    const backendNestedStack = new cdk.NestedStack(
+      this,
+      getStackName("backend", props.environment)
+    );
     this.backendConstruct = new BackendConstruct(
       backendNestedStack,
-      "Backend",
+      getStackName("backend", props.environment),
       {
         domainName: props.domainName,
         rootDomainName: props.rootDomainName,
@@ -46,10 +53,13 @@ export class ParentStack extends cdk.Stack {
     );
 
     // Create the monitoring stack as a nested stack with proper scoping
-    const monitoringNestedStack = new cdk.NestedStack(this, "MonitoringNested");
+    const monitoringNestedStack = new cdk.NestedStack(
+      this,
+      getStackName("monitoring", props.environment)
+    );
     this.monitoringConstruct = new MonitoringConstruct(
       monitoringNestedStack,
-      "Monitoring",
+      getStackName("monitoring", props.environment),
       {
         domainName: props.domainName,
         rootDomainName: props.rootDomainName,

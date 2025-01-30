@@ -22,14 +22,13 @@
         "diff": "cdk diff",
         "synth": "cdk synth",
         "list": "cdk list",
-        "layer:create": "mkdir -p layer-base/python && mkdir -p layer-ml/python",
-        "layer:install-api": "pip install -r ../backend/requirements-layer.txt -t layer-base/python --no-cache-dir",
-        "layer:install-ml": "pip install -r ../backend/requirements-ml.txt -t layer-ml/python --no-cache-dir",
-        "layer:install": "npm run layer:install-api && npm run layer:install-ml",
-        "layer:deploy": "cdk deploy LambdaLayerStack --require-approval never && cdk deploy \"*BackendNested*\" --require-approval never",
-        "layer:update": "npm run layer:create && npm run layer:install && npm run layer:deploy",
-        "layer:clean": "rm -rf layer-base layer-ml",
-        "layer:sync-deps": "cd ../backend && poetry install && poetry run pip freeze > requirements-all.txt && poetry run pip freeze | grep -v \"scikit-learn\" > requirements-layer.txt && poetry run pip freeze | grep \"scikit-learn\" > requirements-ml.txt && rm requirements-all.txt"
+        "layer:create": "node -e \"const fs = require('fs'); ['layer-base/python', 'layer-ml/python'].forEach(dir => { try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { if (e.code !== 'EEXIST') throw e; } });\"",
+        "layer:install-api": "python -m pip install -r ../backend/requirements-layer.txt -t layer-base/python --no-cache-dir",
+        "layer:install-ml": "python -m pip install -r ../backend/requirements-ml.txt -t layer-ml/python --no-cache-dir",
+        "layer:install": "pnpm run layer:install-api && pnpm run layer:install-ml",
+        "layer:deploy": "cdk deploy prod-stardex-layer --require-approval never && cdk deploy \"*prod-stardex-backend*\" --require-approval never",
+        "layer:update": "pnpm run layer:create && pnpm run layer:install && pnpm run layer:deploy",
+        "layer:clean": "node -e \"const fs = require('fs'); ['layer-base', 'layer-ml'].forEach(dir => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { if (e.code !== 'ENOENT') throw e; } });\""
     },
     "devDependencies": {
         "@types/jest": "^29.5.14",
