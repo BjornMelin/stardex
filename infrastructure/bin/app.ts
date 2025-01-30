@@ -1,30 +1,31 @@
 #!/usr/bin/env node
-import "source-map-support/register";
-import * as cdk from "aws-cdk-lib";
-import { VpcStack } from "../lib/networking/vpc-stack";
-import { SecurityStack } from "../lib/security/security-stack";
-import { ServiceStack } from "../lib/stacks/service-stack";
-import { MonitoringStack } from "../lib/monitoring/monitoring-stack";
-import { PipelineStack } from "../lib/stacks/pipeline-stack";
-import { getEnvironment } from "../lib/config/environment";
+import 'source-map-support/register';
+import * as cdk from 'aws-cdk-lib';
+import { VpcStack } from '../lib/networking/vpc-stack';
+import { SecurityStack } from '../lib/security/security-stack';
+import { ServiceStack } from '../lib/stacks/service-stack';
+import { FrontendStack } from '../lib/stacks/frontend-stack';
+import { MonitoringStack } from '../lib/monitoring/monitoring-stack';
+import { PipelineStack } from '../lib/stacks/pipeline-stack';
+import { getEnvironment } from '../lib/config/environment';
 
 const app = new cdk.App();
 
 // Get environment configuration
-const stage = app.node.tryGetContext("stage") || "development";
+const stage = app.node.tryGetContext('stage') || 'development';
 const env = getEnvironment(stage);
 
 // Get AWS account configuration
 const awsEnv = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION || "us-east-1",
+  region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
 };
 
 // Common tags for all stacks
 const commonTags = {
   Environment: env.name,
-  Project: "Stardex",
-  ManagedBy: "CDK",
+  Project: 'Stardex',
+  ManagedBy: 'CDK',
 };
 
 // Create VPC Stack
@@ -54,17 +55,23 @@ const serviceStack = new ServiceStack(app, `${env.name}-service`, {
   tags: commonTags,
 });
 
+// Create Frontend Stack
+const frontendStack = new FrontendStack(app, `${env.name}-frontend`, {
+  environment: env,
+  env: {
+    ...awsEnv,
+    region: 'us-east-1', // ACM certificates for CloudFront must be in us-east-1
+  },
+  tags: commonTags,
+});
+
 // Update Security Stack with Load Balancer
-const updatedSecurityStack = new SecurityStack(
-  app,
-  `${env.name}-security-updated`,
-  {
-    environment: env,
-    loadBalancer: serviceStack.loadBalancer,
-    env: awsEnv,
-    tags: commonTags,
-  }
-);
+const updatedSecurityStack = new SecurityStack(app, `${env.name}-security-updated`, {
+  environment: env,
+  loadBalancer: serviceStack.loadBalancer,
+  env: awsEnv,
+  tags: commonTags,
+});
 
 // Create Monitoring Stack
 const monitoringStack = new MonitoringStack(app, `${env.name}-monitoring`, {
@@ -88,6 +95,7 @@ const pipelineStack = new PipelineStack(app, `${env.name}-pipeline`, {
 // Add stack dependencies
 securityStack.addDependency(vpcStack);
 serviceStack.addDependency(securityStack);
+frontendStack.addDependency(serviceStack); // Frontend depends on backend service
 updatedSecurityStack.addDependency(serviceStack);
 monitoringStack.addDependency(serviceStack);
 pipelineStack.addDependency(serviceStack);
