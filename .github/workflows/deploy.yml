@@ -2,280 +2,184 @@ name: Deploy Stardex
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to deploy to"
-        required: true
-        default: "production"
-        type: choice
-        options:
-          - production
-          - staging
-
-permissions:
-  id-token: write # Required for AWS OIDC
-  contents: read # Required to checkout repository
-  pull-requests: write # Required for test results
+    branches: [main]
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: "20"
-  PYTHON_VERSION: "3.11"
+  ECR_REPOSITORY: stardex-service
+  ECS_CLUSTER: stardex-cluster
+  ECS_SERVICE: stardex-service
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   test:
-    name: Test
+    name: Test Application
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "3.10"
           cache: "pip"
 
-      - name: Get pnpm store directory
-        shell: bash
+      - name: Install dependencies
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      # Frontend Tests
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Run frontend tests
-        working-directory: frontend
-        run: |
-          pnpm lint
-          pnpm test
-        continue-on-error: false
-
-      # Backend Tests
-      - name: Install backend dependencies
-        working-directory: backend
-        run: |
-          python -m pip install --upgrade pip
+          cd backend
           pip install -r requirements.txt
+          pip install pytest pytest-cov
 
-      - name: Run backend tests
-        working-directory: backend
+      - name: Run tests with coverage
         run: |
-          python -m pytest
-          python -m pylint app/
-        continue-on-error: false
+          cd backend
+          pytest --cov=app --cov-report=xml
 
-      # Infrastructure Tests
-      - name: Install CDK dependencies
-        working-directory: infrastructure
-        run: pnpm install --frozen-lockfile
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage.xml
 
-      - name: Run CDK tests
-        working-directory: infrastructure
-        run: |
-          pnpm lint
-          pnpm test
-        continue-on-error: false
-
-  deploy-infrastructure:
-    name: Deploy Infrastructure
-    needs: test
-    if: github.ref == 'refs/heads/main'
+  security-scan:
+    name: Security Scan
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
-    timeout-minutes: 45
-    outputs:
-      bucket_name: ${{ steps.get-outputs.outputs.bucket_name }}
-      distribution_id: ${{ steps.get-outputs.outputs.distribution_id }}
-      api_url: ${{ steps.get-outputs.outputs.api_url }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+      - name: Run Bandit
+        run: |
+          cd backend
+          pip install bandit
+          bandit -r app/ -ll
+
+  build-and-deploy:
+    name: Build and Deploy
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install CDK dependencies
-        working-directory: infrastructure
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
+
+      - name: Download task definition
         run: |
-          pnpm install --frozen-lockfile
-          pnpm install -g aws-cdk
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition > task-definition.json
 
-      - name: Deploy DNS Stack
-        working-directory: infrastructure
-        id: dns-deploy
-        run: |
-          max_attempts=3
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts"
-            if pnpm run deploy:dns -- --require-approval never; then
-              break
-            fi
-            
-            if [ $attempt -eq $max_attempts ]; then
-              echo "DNS stack deployment failed after $max_attempts attempts"
-              exit 1
-            fi
-            
-            attempt=$((attempt + 1))
-            echo "Waiting before retry..."
-            sleep 30
-          done
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ServiceContainer
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-      - name: Deploy Storage Stack
-        working-directory: infrastructure
-        run: |
-          pnpm run deploy:storage -- --require-approval never || {
-            echo "Storage stack deployment failed"
-            exit 1
-          }
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
-      - name: Deploy Backend Stack
-        working-directory: infrastructure
-        run: |
-          chmod +x scripts/bundle-lambda.sh
-          ./scripts/bundle-lambda.sh
-
-          pnpm run deploy:backend -- --require-approval never || {
-            echo "Backend stack deployment failed"
-            exit 1
-          }
-
-      - name: Deploy Monitoring Stack
-        working-directory: infrastructure
-        run: |
-          pnpm run deploy:monitoring -- --require-approval never || {
-            echo "Monitoring stack deployment failed"
-            exit 1
-          }
-
-  deploy-application:
-    name: Deploy Application
-    needs: deploy-infrastructure
+  deploy-production:
+    name: Deploy to Production
+    needs: build-and-deploy
     if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://stardex.bjornmelin.io
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
-    timeout-minutes: 20
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+      - uses: actions/checkout@v3
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: pnpm install --frozen-lockfile
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build frontend
-        working-directory: frontend
-        env:
-          NEXT_PUBLIC_API_URL: ${{ needs.deploy-infrastructure.outputs.api_url }}
-        run: pnpm run build
-
-      - name: Deploy frontend
-        env:
-          BUCKET_NAME: ${{ needs.deploy-infrastructure.outputs.bucket_name }}
-          DISTRIBUTION_ID: ${{ needs.deploy-infrastructure.outputs.distribution_id }}
+      - name: Download production task definition
         run: |
-          aws s3 sync frontend/out/ s3://$BUCKET_NAME/ --delete
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }}-production \
+            --query taskDefinition > task-definition.json
 
-          # Create CloudFront invalidation
-          aws cloudfront create-invalidation \
-            --distribution-id $DISTRIBUTION_ID \
-            --paths "/*"
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ServiceContainer
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
-  validate:
-    name: Validate Deployment
-    needs: [deploy-infrastructure, deploy-application]
-    if: github.ref == 'refs/heads/main'
+      - name: Deploy to Amazon ECS Production
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}-production
+          cluster: ${{ env.ECS_CLUSTER }}-production
+          wait-for-service-stability: true
+
+  notify:
+    name: Notify Deployment Status
+    needs: [build-and-deploy, deploy-production]
+    if: always()
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
-    timeout-minutes: 10
-
     steps:
-      - name: Wait for DNS propagation
-        run: sleep 60
-
-      - name: Verify deployment
+      - name: Check deployment status
+        if: ${{ needs.deploy-production.result == 'success' }}
         run: |
-          curl -f https://stardex.bjornmelin.io || exit 1
-          curl -f ${{ needs.deploy-infrastructure.outputs.api_url }}/health || exit 1
+          echo "Production deployment successful"
+          # Add notification logic here (e.g., Slack, email)
 
-      - name: Notify on success
-        if: success()
+      - name: Notify failure
+        if: ${{ needs.deploy-production.result == 'failure' }}
         run: |
-          echo "🚀 Deployment successful!"
-          echo "Frontend: https://stardex.bjornmelin.io"
-          echo "API: ${{ needs.deploy-infrastructure.outputs.api_url }}"
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "❌ Deployment failed!"
-          echo "Check the logs for details."
+          echo "Production deployment failed"
+          # Add failure notification logic here
