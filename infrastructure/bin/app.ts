@@ -1,89 +1,96 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
-import { DnsStack } from "../lib/stacks/dns-stack";
-import { DeploymentStack } from "../lib/stacks/deployment-stack";
-import { ParentStack } from "../lib/stacks/parent-stack";
-import { BootstrapStack } from "../lib/stacks/bootstrap-stack";
-import { LambdaLayerStack } from "../lib/stacks/lambda-layer-stack";
-import { CONFIG, getStackName } from "../lib/constants";
+import { VpcStack } from "../lib/networking/vpc-stack";
+import { SecurityStack } from "../lib/security/security-stack";
+import { ServiceStack } from "../lib/stacks/service-stack";
+import { MonitoringStack } from "../lib/monitoring/monitoring-stack";
+import { PipelineStack } from "../lib/stacks/pipeline-stack";
+import { getEnvironment } from "../lib/config/environment";
 
 const app = new cdk.App();
 
-// Environment configuration for us-east-1
-const env = {
+// Get environment configuration
+const stage = app.node.tryGetContext("stage") || "development";
+const env = getEnvironment(stage);
+
+// Get AWS account configuration
+const awsEnv = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: "us-east-1",
+  region: process.env.CDK_DEFAULT_REGION || "us-east-1",
 };
 
-// Bootstrap Stack (deploy this first)
-const bootstrapStack = new BootstrapStack(
+// Common tags for all stacks
+const commonTags = {
+  Environment: env.name,
+  Project: "Stardex",
+  ManagedBy: "CDK",
+};
+
+// Create VPC Stack
+const vpcStack = new VpcStack(app, `${env.name}-vpc`, {
+  environment: env,
+  env: awsEnv,
+  tags: commonTags,
+});
+
+// Create Security Stack
+const securityStack = new SecurityStack(app, `${env.name}-security`, {
+  environment: env,
+  loadBalancer: undefined as any, // Will be updated after service stack creation
+  env: awsEnv,
+  tags: commonTags,
+});
+
+// Create Service Stack
+const serviceStack = new ServiceStack(app, `${env.name}-service`, {
+  environment: env,
+  vpc: vpcStack.vpc,
+  taskRole: securityStack.ecsTaskRole,
+  executionRole: securityStack.ecsExecutionRole,
+  ecsSecurityGroup: vpcStack.ecsSecurityGroup,
+  albSecurityGroup: vpcStack.albSecurityGroup,
+  env: awsEnv,
+  tags: commonTags,
+});
+
+// Update Security Stack with Load Balancer
+const updatedSecurityStack = new SecurityStack(
   app,
-  getStackName("bootstrap", "prod"),
+  `${env.name}-security-updated`,
   {
-    env,
-    crossRegionReferences: true,
-    domainName: CONFIG.prod.domainName,
-    rootDomainName: CONFIG.prod.rootDomainName,
-    environment: CONFIG.prod.environment,
-    tags: CONFIG.tags,
+    environment: env,
+    loadBalancer: serviceStack.loadBalancer,
+    env: awsEnv,
+    tags: commonTags,
   }
 );
 
-const layerStack = new LambdaLayerStack(app, getStackName("layer", "prod"), {
-  env,
+// Create Monitoring Stack
+const monitoringStack = new MonitoringStack(app, `${env.name}-monitoring`, {
+  environment: env,
+  service: serviceStack.service,
+  loadBalancer: serviceStack.loadBalancer,
+  targetGroup: serviceStack.targetGroup,
+  env: awsEnv,
+  tags: commonTags,
 });
 
-// DNS Stack (in us-east-1 for CloudFront)
-const dnsStack = new DnsStack(app, getStackName("dns", "prod"), {
-  env,
-  domainName: CONFIG.prod.domainName,
-  rootDomainName: CONFIG.prod.rootDomainName,
-  environment: CONFIG.prod.environment,
-  tags: CONFIG.tags,
+// Create Pipeline Stack
+const pipelineStack = new PipelineStack(app, `${env.name}-pipeline`, {
+  environment: env,
+  repository: serviceStack.repository,
+  service: serviceStack.service,
+  env: awsEnv,
+  tags: commonTags,
 });
 
-// Parent Stack (contains storage, backend, and monitoring as nested stacks)
-const parentStack = new ParentStack(app, getStackName("stardex", "prod"), {
-  env,
-  crossRegionReferences: true,
-  domainName: CONFIG.prod.domainName,
-  rootDomainName: CONFIG.prod.rootDomainName,
-  environment: CONFIG.prod.environment,
-  certificate: dnsStack.certificate,
-  hostedZone: dnsStack.hostedZone,
-  tags: CONFIG.tags,
-  apiLayer: layerStack.apiLayer,
-  mlLayer: layerStack.mlLayer,
-});
+// Add stack dependencies
+securityStack.addDependency(vpcStack);
+serviceStack.addDependency(securityStack);
+updatedSecurityStack.addDependency(serviceStack);
+monitoringStack.addDependency(serviceStack);
+pipelineStack.addDependency(serviceStack);
 
-// Deployment Stack (references resources from parent stack)
-const deploymentStack = new DeploymentStack(
-  app,
-  getStackName("deployment", "prod"),
-  {
-    env,
-    crossRegionReferences: true,
-    domainName: CONFIG.prod.domainName,
-    rootDomainName: CONFIG.prod.rootDomainName,
-    environment: CONFIG.prod.environment,
-    bucket: parentStack.storageConstruct.bucket,
-    distribution: parentStack.storageConstruct.distribution,
-    tags: CONFIG.tags,
-  }
-);
-
-// Stack dependencies
-parentStack.addDependency(dnsStack);
-deploymentStack.addDependency(parentStack);
-
-// Add tags to all stacks
-const stacks = [bootstrapStack, dnsStack, parentStack, deploymentStack];
-
-stacks.forEach((stack) => {
-  cdk.Tags.of(stack).add("Project", "Stardex");
-  cdk.Tags.of(stack).add("ManagedBy", "CDK");
-  cdk.Tags.of(stack).add("Environment", CONFIG.prod.environment);
-});
-
+// Output synthesized CloudFormation templates
 app.synth();
