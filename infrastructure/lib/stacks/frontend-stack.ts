@@ -1,13 +1,13 @@
-import * as cdk from 'aws-cdk-lib';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
-import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as targets from 'aws-cdk-lib/aws-route53-targets';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
-import { Construct } from 'constructs';
-import { Environment } from '../types/environment';
+import * as cdk from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
+import * as route53 from "aws-cdk-lib/aws-route53";
+import * as targets from "aws-cdk-lib/aws-route53-targets";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as wafv2 from "aws-cdk-lib/aws-wafv2";
+import { Construct } from "constructs";
+import { Environment } from "../types/environment";
 
 export interface FrontendStackProps extends cdk.StackProps {
   environment: Environment;
@@ -21,7 +21,7 @@ export class FrontendStack extends cdk.Stack {
     super(scope, id, props);
 
     // Create S3 bucket for website hosting
-    this.websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
+    this.websiteBucket = new s3.Bucket(this, "WebsiteBucket", {
       bucketName: `${props.environment.name}-stardex-website`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -37,24 +37,27 @@ export class FrontendStack extends cdk.Stack {
     });
 
     // Get the hosted zone for the domain
-    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
-      domainName: 'bjornmelin.io',
+    const hostedZone = route53.HostedZone.fromLookup(this, "HostedZone", {
+      domainName: "bjornmelin.io",
     });
 
     // Create SSL certificate
-    const certificate = new acm.Certificate(this, 'Certificate', {
+    const certificate = new acm.Certificate(this, "Certificate", {
       domainName: props.environment.domain,
       validation: acm.CertificateValidation.fromDns(hostedZone),
     });
 
     // Create CloudFront Origin Access Identity
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'OAI');
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(
+      this,
+      "OAI"
+    );
     this.websiteBucket.grantRead(originAccessIdentity);
 
     // Create WAF Web ACL
-    const webAcl = new wafv2.CfnWebACL(this, 'WebACL', {
+    const webAcl = new wafv2.CfnWebACL(this, "WebACL", {
       defaultAction: { allow: {} },
-      scope: 'CLOUDFRONT',
+      scope: "CLOUDFRONT",
       visibilityConfig: {
         cloudWatchMetricsEnabled: true,
         metricName: `${props.environment.name}-frontend-waf`,
@@ -62,12 +65,12 @@ export class FrontendStack extends cdk.Stack {
       },
       rules: [
         {
-          name: 'RateLimit',
+          name: "RateLimit",
           priority: 1,
           statement: {
             rateBasedStatement: {
               limit: props.environment.rateLimit.requestsPerSecond,
-              aggregateKeyType: 'IP',
+              aggregateKeyType: "IP",
             },
           },
           action: { block: {} },
@@ -79,12 +82,12 @@ export class FrontendStack extends cdk.Stack {
           overrideAction: { none: {} },
         },
         {
-          name: 'AWSManagedRulesCommonRuleSet',
+          name: "AWSManagedRulesCommonRuleSet",
           priority: 2,
           statement: {
             managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesCommonRuleSet',
+              vendorName: "AWS",
+              name: "AWSManagedRulesCommonRuleSet",
             },
           },
           overrideAction: { none: {} },
@@ -98,7 +101,7 @@ export class FrontendStack extends cdk.Stack {
     });
 
     // Create CloudFront distribution
-    this.distribution = new cloudfront.Distribution(this, 'Distribution', {
+    this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
         origin: new origins.S3Origin(this.websiteBucket, {
           originAccessIdentity,
@@ -111,17 +114,17 @@ export class FrontendStack extends cdk.Stack {
       },
       domainNames: [props.environment.domain],
       certificate: certificate,
-      defaultRootObject: 'index.html',
+      defaultRootObject: "index.html",
       errorResponses: [
         {
           httpStatus: 404,
           responseHttpStatus: 200,
-          responsePagePath: '/index.html',
+          responsePagePath: "/index.html",
         },
       ],
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       enableLogging: true,
-      logBucket: new s3.Bucket(this, 'LogsBucket', {
+      logBucket: new s3.Bucket(this, "LogsBucket", {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
         autoDeleteObjects: true,
         lifecycleRules: [
@@ -134,7 +137,7 @@ export class FrontendStack extends cdk.Stack {
     });
 
     // Create Route53 alias record
-    new route53.ARecord(this, 'AliasRecord', {
+    new route53.ARecord(this, "AliasRecord", {
       zone: hostedZone,
       target: route53.RecordTarget.fromAlias(
         new targets.CloudFrontTarget(this.distribution)
@@ -143,19 +146,19 @@ export class FrontendStack extends cdk.Stack {
     });
 
     // Outputs
-    new cdk.CfnOutput(this, 'DistributionDomainName', {
+    new cdk.CfnOutput(this, "DistributionDomainName", {
       value: this.distribution.distributionDomainName,
-      description: 'CloudFront Distribution Domain Name',
+      description: "CloudFront Distribution Domain Name",
     });
 
-    new cdk.CfnOutput(this, 'WebsiteURL', {
+    new cdk.CfnOutput(this, "WebsiteURL", {
       value: `https://${props.environment.domain}`,
-      description: 'Website URL',
+      description: "Website URL",
     });
 
-    new cdk.CfnOutput(this, 'BucketName', {
+    new cdk.CfnOutput(this, "BucketName", {
       value: this.websiteBucket.bucketName,
-      description: 'S3 Bucket Name',
+      description: "S3 Bucket Name",
     });
   }
 }
