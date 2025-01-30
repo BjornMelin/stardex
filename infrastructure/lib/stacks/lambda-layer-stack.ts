@@ -12,7 +12,12 @@ export class LambdaLayerStack extends cdk.Stack {
 
     // Define the API Lambda Layer
     this.apiLayer = new lambda.LayerVersion(this, "APILayer", {
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-base")),
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-base"), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          command: ["bash", "-c", "cp -r /asset-input/python /asset-output/"],
+        },
+      }),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: "FastAPI Dependencies Layer",
       removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -20,7 +25,12 @@ export class LambdaLayerStack extends cdk.Stack {
 
     // Define the ML Lambda Layer
     this.mlLayer = new lambda.LayerVersion(this, "MLLayer", {
-      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-ml")),
+      code: lambda.Code.fromAsset(path.join(__dirname, "../../layer-ml"), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          command: ["bash", "-c", "cp -r /asset-input/python /asset-output/"],
+        },
+      }),
       compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       description: "Machine Learning Dependencies Layer",
       removalPolicy: cdk.RemovalPolicy.RETAIN,
