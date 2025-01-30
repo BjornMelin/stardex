@@ -1,14 +1,20 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
-from .clustering import get_clusters
-from .models import Repository, ClusterRequest
-import os
+import time
+from typing import List
+
+from app.models import ClusteringRequest, ClusteringResponse, ClusterResult
+from app.clustering import (
+    perform_kmeans,
+    perform_hierarchical,
+    perform_pca_hierarchical,
+)
+
 
 app = FastAPI(
     title="Stardex API",
-    description="Backend API for Stardex GitHub Repository Analysis",
-    version="1.0.0",
+    version="0.1.0",
+    description="API for clustering GitHub repositories using multiple algorithms",
 )
 
 # Configure CORS
@@ -25,38 +31,116 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy"}
 
-@app.post("/clustering/repositories")
-async def cluster_repositories(request: ClusterRequest):
-    """Cluster GitHub repositories based on provided parameters"""
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Handle ValueError exceptions."""
+    return ClusteringResponse(
+        status="error", error_message=str(exc), total_processing_time_ms=0
+    )
+
+
+def extract_repo_descriptions(repositories: List[dict]) -> List[str]:
+    """Extract descriptions from repositories, handling None values."""
+    return [
+        repo.description or repo.name  # Use name if description is None
+        for repo in repositories
+    ]
+
+
+@app.post("/clustering", response_model=ClusteringResponse)
+def perform_all_clustering(request: ClusteringRequest):
+    """
+    Perform all clustering algorithms on the provided repository data.
+
+    This endpoint runs:
+    1. K-means clustering
+    2. Hierarchical clustering
+    3. PCA + Hierarchical clustering
+
+    Each algorithm runs independently and their results are combined in the response.
+    """
+    start_time = time.time()
+    descriptions = extract_repo_descriptions(request.repositories)
+
+    response = ClusteringResponse(status="success", total_processing_time_ms=0)
+
     try:
-        clusters = get_clusters(
-            repositories=request.repositories,
-            n_clusters=request.n_clusters,
-            min_samples=request.min_samples,
-            min_cluster_size=request.min_cluster_size,
-        )
-        return {"clusters": clusters}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Perform K-means clustering
+        kmeans_start = time.time()
+        kmeans_clusters = perform_kmeans(descriptions, request.kmeans_clusters)
+        kmeans_time = (time.time() - kmeans_start) * 1000
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
+        response.kmeans_clusters = ClusterResult(
+            algorithm="kmeans",
+            clusters=kmeans_clusters,
+            parameters={"num_clusters": request.kmeans_clusters},
+            processing_time_ms=kmeans_time,
+        )
+
+        # Perform hierarchical clustering
+        hierarchical_start = time.time()
+        hierarchical_clusters = perform_hierarchical(
+            descriptions, distance_threshold=request.hierarchical_threshold
+        )
+        hierarchical_time = (time.time() - hierarchical_start) * 1000
+
+        response.hierarchical_clusters = ClusterResult(
+            algorithm="hierarchical",
+            clusters=hierarchical_clusters,
+            parameters={"distance_threshold": request.hierarchical_threshold},
+            processing_time_ms=hierarchical_time,
+        )
+
+        # Perform PCA + hierarchical clustering
+        pca_start = time.time()
+        pca_clusters = perform_pca_hierarchical(
+            descriptions,
+            n_components=request.pca_components,
+            distance_threshold=request.hierarchical_threshold,
+        )
+        pca_time = (time.time() - pca_start) * 1000
+
+        response.pca_hierarchical_clusters = ClusterResult(
+            algorithm="pca_hierarchical",
+            clusters=pca_clusters,
+            parameters={
+                "n_components": request.pca_components,
+                "distance_threshold": request.hierarchical_threshold,
+            },
+            processing_time_ms=pca_time,
+        )
+
+        # Calculate total processing time
+        response.total_processing_time_ms = (time.time() - start_time) * 1000
+
+        return response
+
+    except Exception as e:
+        return ClusteringResponse(
+            status="error",
+            error_message=str(e),
+            total_processing_time_ms=(time.time() - start_time) * 1000,
+        )
+
+
+@app.get(
+    "/health",
+    summary="Health check endpoint",
+    description="Returns the current status of the API service",
+    response_description="Health status object",
+)
+async def health_check():
+    """Health check endpoint."""
     return {
-        "message": "Welcome to Stardex API",
-        "version": "1.0.0",
-        "docs_url": "/docs",
+        "status": "healthy",
+        "timestamp": time.time(),
+        "clustering_service": "available",
     }
 
-# Create Lambda handler
-handler = Mangum(app, lifespan="off")
 
 # If running locally
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

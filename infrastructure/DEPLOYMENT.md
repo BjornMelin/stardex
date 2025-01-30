@@ -443,6 +443,8 @@ scaling.scale_on_cpu_utilization("CpuScaling",
 
 ### Monthly Infrastructure Costs (US East-1 Region)
 
+#### Backend Costs
+
 #### 1. ECS Fargate (Optimized)
 - Task Configuration: 0.25 vCPU, 512MB RAM (minimum size)
 - Running on-demand only: Est. 360 hours/month (50% utilization)
@@ -461,6 +463,24 @@ scaling.scale_on_cpu_utilization("CpuScaling",
 - Estimated outbound: 5GB/month
 - First 5GB: $0.09/GB * 5GB = **$0.45**
 
+#### Frontend Costs
+
+#### 5. S3 Storage
+- Static website files: ~50MB = **$0.001**
+- PUT/COPY/POST requests: 100/month = **$0.005**
+- GET requests: 10,000/month = **$0.004**
+
+#### 6. CloudFront
+- Data transfer out: 2GB/month = **$0.17**
+- Requests: 10,000/month = **$0.01**
+
+#### 7. Route53
+- Hosted zone: **$0.50**
+- Queries: 10,000/month = **$0.004**
+
+#### 8. Certificate Manager
+- SSL Certificate: **Free**
+
 ### Total Estimated Monthly Cost (Highly Optimized)
 
 | Service               | Cost    |
@@ -469,7 +489,13 @@ scaling.scale_on_cpu_utilization("CpuScaling",
 | ECR                  | $0.15   |
 | CloudWatch Logs      | $0.53   |
 | Data Transfer        | $0.45   |
-| **Total**            | **$8.97** |
+| S3                   | $0.01   |
+| CloudFront           | $0.18   |
+| Route53              | $0.50   |
+| Certificate Manager  | $0.00   |
+| **Total**            | **$9.66** |
+
+Note: Costs are estimated for low traffic (~10,000 requests/month). CloudFront caching will help reduce backend costs by serving cached content from edge locations.
 
 ### Major Cost-Saving Measures Implemented
 
