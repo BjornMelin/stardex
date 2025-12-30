@@ -1,146 +1,130 @@
 # ⭐ Stardex - Explore GitHub Stars Intelligently
 
-> 🚀 Discover patterns in your GitHub stars through machine learning
+Understand your GitHub stars faster: fetch stars from one or more users, filter what you care about, then cluster repos by description similarity.
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.1-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python)](https://www.python.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-4.1-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![GitHub](https://img.shields.io/badge/GitHub-BjornMelin-181717?logo=github)](https://github.com/BjornMelin)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19.2-blue?logo=react)](https://react.dev)
 
-Stardex helps you explore and understand your GitHub starred repositories through advanced machine learning clustering and interactive visualizations.
+## Table of Contents
 
-## 📚 Table of Contents
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+- [Development](#development)
+- [Author](#author)
+- [How to Cite](#how-to-cite)
+- [License](#license)
 
-- [✨ Features](#-features)
-- [🛠️ Technology Stack](#️-technology-stack)
-- [🔎 Detailed Features](#-detailed-features)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Getting Started](#-getting-started)
-- [🔌 API Reference](#-api-reference)
-- [🧪 Development](#-development)
-- [📈 Performance](#-performance)
-- [👨‍💻 Author](#-author)
-- [📚 How to Cite](#-how-to-cite)
-- [📝 License](#-license)
+## Features
 
-## ✨ Features
+- Search GitHub users and pull their starred repositories (supports multiple users).
+- Explore in a list view with search, language filtering, topic filtering, minimum stars, and sorting.
+- Cluster repositories by description similarity using K-means, hierarchical clustering, or PCA + hierarchical clustering.
+- Tune clustering parameters from the UI and switch between algorithms.
+- Strong input validation in the backend (clear errors and safe limits).
 
-- 🔍 **Smart Analysis**: Machine learning-based clustering of repositories
-- 📊 **Interactive Visualization**: Dynamic D3.js visualization of repository clusters
-- ⚡ **Real-time Processing**: Fast data processing and clustering
-- 🔄 **Efficient Data Flow**: Optimized communication between services
-- 🛡️ **Type Safety**: Full TypeScript and Python type coverage
-- 🎨 **Modern UI**: Clean, responsive interface with Tailwind CSS
-- 📱 **Mobile Ready**: Fully responsive design for all devices
-
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Frontend**
-
-  - Next.js 16 with App Router
-  - React 19 with TypeScript
-  - TanStack Query for data management
-  - D3.js for visualizations
-  - Tailwind CSS for styling
-  - Shadcn/ui components
+  - Next.js (App Router) + React + TypeScript
+  - TanStack Query for data fetching/caching
+  - Zustand for client state
+  - shadcn/ui-style components (Radix primitives + Tailwind)
+  - Tailwind CSS
+  - Zod for client-side validation
 
 - **Backend**
-  - FastAPI for REST API
-  - scikit-learn for ML operations
+  - FastAPI + Pydantic (Python 3.11+)
+  - scikit-learn (TF-IDF, K-means, PCA)
+  - SciPy hierarchical clustering (scikit-learn uses SciPy for hierarchical clustering)
   - uv for dependency management
-  - Pydantic for data validation
+  - Ruff + Pyright + pytest for quality gates
 
-## 🔎 Detailed Features
+## How It Works
 
-### Search & Filtering
+1. The frontend calls the GitHub REST API to fetch starred repositories for selected users.
+2. The frontend sends repository metadata to the backend clustering API.
+3. The backend vectorizes repository text (description/name) using TF-IDF and runs one or more clustering algorithms.
+4. The frontend renders clusters and lets you filter/search within the results.
 
-- Real-time repository search
-- Language-based filtering
-- Star count range filtering
-- Topic-based filtering
-- Date range filtering
+## Architecture
 
-### AI Clustering
+This repo is a monorepo with two services:
 
-- Multi-algorithm clustering approach:
-  - K-means for broad repository grouping
-  - Hierarchical clustering for detailed relationships
-  - PCA + Hierarchical clustering for large datasets
-- TF-IDF vectorization for text analysis
-- Configurable clustering parameters
-- Performance metrics tracking
-- Efficient processing of large datasets
+- `frontend/`: Next.js app (App Router).
+- `backend/`: FastAPI service exposing the clustering API.
 
-### Visualization
+Data flow:
 
-- Interactive D3.js force-directed graph
-- Cluster-based coloring
-- Zoom and pan capabilities
-- Repository details on hover
-- Smooth animations and transitions
+- Browser -> GitHub REST API (`/search/users`, `/users/:user/starred`)
+- Browser -> Backend (`POST /clustering`)
 
-## 🏗️ Architecture
+## Getting Started
 
-The application is structured as a monorepo with two main services:
+### Prerequisites
 
-### 🎨 Frontend Service (Next.js)
+- Node.js (LTS) + `pnpm`
+- Python 3.11+ + `uv`
 
-- Located in `/frontend`
-- Built with Next.js, React, and TypeScript
-- Uses TanStack Query for data fetching
-- Implements a responsive UI with Tailwind CSS
-- Visualizes repository clusters using D3.js
+### Install
 
-### ⚙️ Backend Service (FastAPI)
+```bash
+pnpm install
+(cd backend && uv sync)
+```
 
-- Located in `/backend`
-- Built with FastAPI and Python
-- Implements advanced clustering using scikit-learn
-- Provides RESTful API endpoints
-- Efficient data processing with sparse matrices
-- Parallel processing capabilities
+### Run (recommended)
 
-## 🚀 Getting Started
+```bash
+pnpm dev
+```
 
-1. **Clone & Install:**
+### Run services separately
 
-   ```bash
-   # Install frontend + root (workspace) dependencies
-   pnpm install
+```bash
+pnpm dev:frontend
+pnpm dev:backend
+```
 
-   # Install backend dependencies
-   cd backend
-   uv sync
-   ```
+Open the app at `http://localhost:3000`.
 
-2. **Environment Setup:**
+## Configuration
 
-   ```bash
-   # Frontend (.env.local)
-   NEXT_PUBLIC_API_URL=http://localhost:8000
-   ```
+### Frontend
 
-3. **Development:**
+Create `frontend/.env.local`:
 
-   ```bash
-   # Run both services
-   pnpm run dev
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
-   # Or run individually
-   pnpm run dev:frontend
-   pnpm run dev:backend
-   ```
+### Backend
 
-## 🔌 API Reference
+- `CORS_ORIGINS`: comma-separated list of allowed origins. Default: `http://localhost:3000`.
+- `UVICORN_HOST`: default `127.0.0.1` (only used when running `python app/main.py` directly).
+- `UVICORN_PORT`: default `8000` (only used when running `python app/main.py` directly).
 
-### 🔄 POST /clustering
+## API Reference
 
-Clusters GitHub repositories based on their features.
+### POST /clustering
+
+Runs clustering algorithms over repository descriptions/names. The backend validates and enforces limits:
+
+- `repositories`: 2..250 items
+- `kmeans_clusters`: 2..20 (and must be <= number of repos)
+- `hierarchical_threshold`: (0, 10]
+- `pca_components`: 2..50 (and must be <= number of repos and TF-IDF dimensions)
 
 <details>
 <summary>Request Body</summary>
@@ -206,78 +190,44 @@ Clusters GitHub repositories based on their features.
 
 </details>
 
-### 🏥 GET /health
+### GET /health
 
 Health check endpoint.
 
 ```json
 {
-  "status": "healthy"
+  "status": "healthy",
+  "timestamp": 1730000000.0,
+  "clustering_service": "available"
 }
 ```
 
-## 🧪 Development
+## Development
 
-### 🔬 Technical Implementation
+Run from repo root:
 
-The clustering process follows these steps:
+```bash
+pnpm lint
+pnpm biome
+pnpm typecheck
+pnpm test
+pnpm build
+```
 
-1. 📊 **Feature Extraction**
+Backend-only (from `backend/`):
 
-   - TF-IDF vectorization for text data
-   - Repository metadata processing
-   - Language and topic encoding
+```bash
+uv run ruff format
+uv run ruff check
+uv run pyright
+uv run python -m pytest
+```
 
-2. 📉 **Dimensionality Reduction**
+Notes:
 
-   - PCA for high-dimensional data
-   - Configurable number of components
-   - Efficient sparse matrix operations
+- The frontend uses the public GitHub API from the browser. If you hit rate limits, wait for the reset time and retry.
 
-3. 🎯 **Clustering**
-
-   - K-means for initial grouping
-   - Hierarchical clustering with Ward linkage
-   - PCA-enhanced hierarchical clustering for large datasets
-
-4. 🎨 **Visualization**
-   - Interactive D3.js rendering
-   - Cluster-based coloring
-   - Smooth animations
-
-### 🛠️ Code Quality
-
-- 📝 **Style Guides**
-
-  - Frontend: ESLint + Biome
-  - Backend: Black + isort
-
-- ✅ **Testing**
-
-  - Frontend: Vitest
-  - Backend: pytest
-
-- 🔄 **Git Workflow**
-  - Feature branches
-  - Pull request reviews
-  - Semantic versioning
-
-## 📈 Performance
-
-### ⚡ Backend Optimizations
-
-- Efficient sparse matrix operations
-- Parallel processing capabilities
-- Memory-optimized data structures
-- Request validation & caching
-
-### 🚀 Frontend Optimizations
-
-- Optimized D3.js rendering
-- React Query data caching
-- Component lazy loading
-
-## 👨‍💻 Author
+## Author
 
 ### Bjorn Melin
 
@@ -285,7 +235,7 @@ The clustering process follows these steps:
 - Website: [bjornmelin.io](https://bjornmelin.io)
 - LinkedIn: [@bjorn-melin](https://www.linkedin.com/in/bjorn-melin/)
 
-## 📚 How to Cite
+## How to Cite
 
 If you use Stardex in your research or project, please cite it as follows:
 
@@ -293,20 +243,20 @@ If you use Stardex in your research or project, please cite it as follows:
 @software{melin2024stardex,
   author = {Melin, Bjorn},
   title = {Stardex: GitHub Stars Explorer},
-  year = {2024},
+  year = {2025},
   publisher = {GitHub},
   url = {https://github.com/BjornMelin/stardex},
-  version = {1.0.0},
-  description = {A machine learning-powered tool for exploring and understanding GitHub starred repositories through clustering and interactive visualizations}
+  version = {0.1.0},
+  description = {Explore and cluster GitHub starred repositories using a Next.js UI and a FastAPI clustering service}
 }
 ```
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <p align="center">
-Built with ❤️ by [Bjorn Melin](https://bjornmelin.io)
+Built by [Bjorn Melin](https://bjornmelin.io)
 </p>
