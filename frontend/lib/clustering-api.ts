@@ -4,7 +4,7 @@ import { GitHubRepo } from "./github";
 const ClusterResultSchema = z.strictObject({
   algorithm: z.string(),
   clusters: z.record(z.string(), z.array(z.number().int().nonnegative())),
-  parameters: z.record(z.string(), z.number()),
+  parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   processing_time_ms: z.number().nonnegative(),
 });
 

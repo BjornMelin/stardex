@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings2 } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -39,7 +39,7 @@ export function ClusterSettings({
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Help">
-                  <Settings2 className="h-4 w-4" />
+                  <HelpCircle className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80">

@@ -95,6 +95,11 @@ def perform_pca_hierarchical(
     vectorizer = TfidfVectorizer(stop_words="english")
     dense_features = vectorizer.fit_transform(data).toarray()  # type: ignore[union-attr]
 
+    # Validate n_components against TF-IDF feature dimensions
+    max_components = min(len(data), dense_features.shape[1])
+    if n_components > max_components:
+        raise InvalidPcaComponentsError
+
     pca = PCA(n_components=n_components)
     reduced_features = pca.fit_transform(dense_features)
 

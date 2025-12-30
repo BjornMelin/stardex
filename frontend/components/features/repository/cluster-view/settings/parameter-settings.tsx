@@ -19,13 +19,11 @@ export function ParameterSettings({ settings, onSettingsChange }: ParameterSetti
 
   const handleSettingChange = useCallback(
     (key: keyof ClusterParameterSettings, value: number) => {
-      setLocalSettings((prev) => {
-        const newSettings = { ...prev, [key]: value };
-        onSettingsChange(newSettings);
-        return newSettings;
-      });
+      const newSettings = { ...localSettings, [key]: value };
+      setLocalSettings(newSettings);
+      onSettingsChange(newSettings);
     },
-    [onSettingsChange]
+    [localSettings, onSettingsChange]
   );
 
   return (

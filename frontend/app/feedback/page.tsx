@@ -8,11 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 
 const REPO_OWNER = "bjornmelin";
 const REPO_NAME = "stardex";
+const MAX_FEEDBACK_LENGTH = 4000; // Safe limit for URL encoding
 
 function buildIssueUrl(feedback: string): string {
   const url = new URL(`https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new`);
   url.searchParams.set("title", "Stardex feedback");
-  url.searchParams.set("body", feedback);
+  url.searchParams.set("body", feedback.slice(0, MAX_FEEDBACK_LENGTH));
   return url.toString();
 }
 
@@ -66,6 +67,7 @@ export default function FeedbackPage() {
                 onChange={(e) => setFeedback(e.target.value)}
                 className="min-h-[200px]"
                 disabled={isSubmitting}
+                maxLength={MAX_FEEDBACK_LENGTH}
               />
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={!feedback.trim() || isSubmitting}>

@@ -43,8 +43,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=parse_cors_origins(os.getenv("CORS_ORIGINS")),
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 
@@ -61,10 +61,7 @@ async def request_validation_error_handler(
 
 def extract_repo_descriptions(repositories: list[GitHubRepo]) -> list[str]:
     """Extract descriptions from repositories, handling None values."""
-    return [
-        (repo.description or "").strip() or repo.name
-        for repo in repositories
-    ]
+    return [(repo.description or "").strip() or repo.name for repo in repositories]
 
 
 @app.post("/clustering")
@@ -172,4 +169,6 @@ async def health_check() -> dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    host = os.getenv("UVICORN_HOST", "127.0.0.1")
+    port = int(os.getenv("UVICORN_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

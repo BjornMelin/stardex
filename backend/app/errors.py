@@ -35,4 +35,3 @@ class InvalidClusteringParametersError(ClusteringInputError):
 
     def __init__(self, param_name: str) -> None:
         super().__init__(f"{param_name} must be <= number of repositories")
-
