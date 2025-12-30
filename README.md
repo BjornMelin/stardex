@@ -6,7 +6,7 @@ Understand your GitHub stars faster: fetch stars from one or more users, filter 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python)](https://www.python.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-4.1-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![GitHub](https://img.shields.io/badge/GitHub-BjornMelin-181717?logo=github)](https://github.com/BjornMelin)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
@@ -47,7 +47,7 @@ Understand your GitHub stars faster: fetch stars from one or more users, filter 
 - **Backend**
   - FastAPI + Pydantic (Python 3.11+)
   - scikit-learn (TF-IDF, K-means, PCA)
-  - SciPy hierarchical clustering (via scikit-learn dependency graph)
+  - SciPy hierarchical clustering (scikit-learn uses SciPy for hierarchical clustering)
   - uv for dependency management
   - Ruff + Pyright + pytest for quality gates
 
