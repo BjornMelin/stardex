@@ -110,6 +110,16 @@ Response:
 
 Health check endpoint returning service status.
 
+Example response:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": 1730000000.0,
+  "clustering_service": "available"
+}
+```
+
 For complete API documentation, visit:
 
 - Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
@@ -198,6 +208,15 @@ For large datasets, consider:
 1. Adjusting PCA components to reduce dimensionality
 2. Increasing the hierarchical clustering threshold
 3. Reducing the number of K-means clusters
+
+## Limits and Validation
+
+The `POST /clustering` request model enforces safe defaults and limits:
+
+- `repositories`: 2..250 items
+- `kmeans_clusters`: 2..20 (and must be <= number of repos)
+- `hierarchical_threshold`: (0, 10]
+- `pca_components`: 2..50 (and must be <= number of repos and TF-IDF dimensions)
 
 ## Contributing
 
