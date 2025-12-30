@@ -1,10 +1,10 @@
 "use client";
 
-import { Star, Calendar, Code, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { Calendar, Code, ExternalLink, Star } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { GitHubRepo } from "@/lib/github";
 import { cn } from "@/lib/utils";
 
@@ -15,42 +15,17 @@ interface RepositoryCardProps {
 
 export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
   return (
-    <Card
-      className={cn(
-        "p-4 hover:bg-muted/50 transition-colors",
-        viewMode === "list" && "p-3"
-      )}
-    >
-      <div
-        className={cn(
-          "space-y-4",
-          viewMode === "list" && "flex items-center gap-4"
-        )}
-      >
-        <div
-          className={cn(
-            "flex items-start gap-4",
-            viewMode === "list" && "flex-1 min-w-0"
-          )}
-        >
-          <Avatar
-            className={cn(
-              "h-12 w-12 rounded-lg",
-              viewMode === "list" && "h-10 w-10"
-            )}
-          >
+    <Card className={cn("p-4 hover:bg-muted/50 transition-colors", viewMode === "list" && "p-3")}>
+      <div className={cn("space-y-4", viewMode === "list" && "flex items-center gap-4")}>
+        <div className={cn("flex items-start gap-4", viewMode === "list" && "flex-1 min-w-0")}>
+          <Avatar className={cn("h-12 w-12 rounded-lg", viewMode === "list" && "h-10 w-10")}>
             <AvatarImage src={repo.owner.avatar_url} alt={repo.owner.login} />
             <AvatarFallback>{repo.owner.login[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <h3
-                  className={cn(
-                    "font-semibold leading-none",
-                    viewMode === "list" && "text-sm"
-                  )}
-                >
+                <h3 className={cn("font-semibold leading-none", viewMode === "list" && "text-sm")}>
                   <a
                     href={repo.html_url}
                     target="_blank"
@@ -62,9 +37,7 @@ export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
                   </a>
                 </h3>
                 {repo.description && viewMode === "grid" && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {repo.description}
-                  </p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{repo.description}</p>
                 )}
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
@@ -72,12 +45,7 @@ export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
                 {repo.stargazers_count.toLocaleString()}
               </div>
             </div>
-            <div
-              className={cn(
-                "mt-4 flex flex-wrap gap-2",
-                viewMode === "list" && "mt-1"
-              )}
-            >
+            <div className={cn("mt-4 flex flex-wrap gap-2", viewMode === "list" && "mt-1")}>
               {repo.language && (
                 <Badge variant="secondary" className="gap-1">
                   <Code className="h-3 w-3" />

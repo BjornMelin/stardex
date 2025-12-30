@@ -1,24 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ClusterCard } from "./cluster-card";
-import { ClusterSettings } from "./cluster-settings";
-import {
-  algorithmDescriptions,
-  defaultClusteringConfig,
-} from "@/lib/clustering-api";
-import { ClusterViewProps } from "@/lib/types/clustering";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   computeClusterData,
+  extractUniqueMeta,
   filterClusters,
   getClusterSimilarity,
-  extractUniqueMeta,
 } from "@/lib/clustering/utils";
+import { algorithmDescriptions } from "@/lib/clustering-api";
+import { ClusterViewProps } from "@/lib/types/clustering";
+import { ClusterCard } from "./cluster-card";
+import { ClusterSettings } from "./cluster-settings";
 
 export function ClusterView({
   result,
@@ -30,17 +27,12 @@ export function ClusterView({
   onFiltersChange,
 }: ClusterViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedClusters, setExpandedClusters] = useState<Set<number>>(
-    new Set()
-  );
+  const [expandedClusters, setExpandedClusters] = useState<Set<number>>(new Set());
 
   // Process repository data
-  const { languages: allLanguages, topics: allTopics } =
-    extractUniqueMeta(repositories);
+  const { languages: allLanguages, topics: allTopics } = extractUniqueMeta(repositories);
   const clusterRepos = computeClusterData(result, repositories);
-  const sortedClusters = [...clusterRepos].sort(
-    (a, b) => b.metadata.size - a.metadata.size
-  );
+  const sortedClusters = [...clusterRepos].sort((a, b) => b.metadata.size - a.metadata.size);
   const filteredClusters = filterClusters(sortedClusters, searchQuery, currentFilters);
 
   const toggleCluster = (clusterId: number) => {
@@ -61,7 +53,7 @@ export function ClusterView({
     <div className="h-[calc(100vh-24rem)]">
       <div className="flex h-full">
         {/* Settings Panel */}
-        <div className={`relative h-full flex ${isSettingsCollapsed ? 'w-0' : ''}`}>
+        <div className={`relative h-full flex ${isSettingsCollapsed ? "w-0" : ""}`}>
           {!isSettingsCollapsed && (
             <ClusterSettings
               settings={currentSettings}
@@ -78,7 +70,11 @@ export function ClusterView({
             className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 h-12 w-6 border shadow-sm bg-background"
             onClick={() => setIsSettingsCollapsed(!isSettingsCollapsed)}
           >
-            {isSettingsCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {isSettingsCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
@@ -89,17 +85,12 @@ export function ClusterView({
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {
-                      algorithmDescriptions[
-                        algorithm as keyof typeof algorithmDescriptions
-                      ]?.name
-                    }
+                    {algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]?.name}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     {
-                      algorithmDescriptions[
-                        algorithm as keyof typeof algorithmDescriptions
-                      ]?.description
+                      algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]
+                        ?.description
                     }
                   </p>
                 </div>
@@ -115,8 +106,7 @@ export function ClusterView({
                   className="max-w-md"
                 />
                 <p className="text-sm text-muted-foreground">
-                  Showing {filteredClusters.length} of {sortedClusters.length}{" "}
-                  clusters
+                  Showing {filteredClusters.length} of {sortedClusters.length} clusters
                 </p>
               </div>
             </div>
@@ -131,9 +121,7 @@ export function ClusterView({
                     isExpanded={expandedClusters.has(cluster.id)}
                     onToggle={() => toggleCluster(cluster.id)}
                     getClusterSimilarity={getClusterSimilarity}
-                    previousCluster={
-                      index > 0 ? filteredClusters[index - 1] : undefined
-                    }
+                    previousCluster={index > 0 ? filteredClusters[index - 1] : undefined}
                     sortedClusters={sortedClusters}
                   />
                 ))}

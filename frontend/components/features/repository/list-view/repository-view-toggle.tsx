@@ -8,10 +8,7 @@ interface ViewToggleProps {
   onViewModeChange: (mode: "grid" | "list") => void;
 }
 
-export function RepositoryViewToggle({
-  viewMode,
-  onViewModeChange,
-}: ViewToggleProps) {
+export function RepositoryViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
   return (
     <div className="flex items-center border rounded-md">
       <Button

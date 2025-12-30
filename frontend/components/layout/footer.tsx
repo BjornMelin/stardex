@@ -1,13 +1,7 @@
 "use client";
 
+import { BookOpenCheck, BookText, GithubIcon, Globe, Linkedin } from "lucide-react";
 import Link from "next/link";
-import {
-  GithubIcon,
-  Linkedin,
-  BookText,
-  BookOpenCheck,
-  Globe,
-} from "lucide-react";
 
 export function Footer() {
   return (
@@ -26,16 +20,10 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Quick Links</h3>
             <nav className="flex flex-col space-y-2">
-              <Link
-                href="/about"
-                className="text-sm text-foreground/60 hover:text-foreground"
-              >
+              <Link href="/about" className="text-sm text-foreground/60 hover:text-foreground">
                 About
               </Link>
-              <Link
-                href="/feedback"
-                className="text-sm text-foreground/60 hover:text-foreground"
-              >
+              <Link href="/feedback" className="text-sm text-foreground/60 hover:text-foreground">
                 Feedback
               </Link>
             </nav>

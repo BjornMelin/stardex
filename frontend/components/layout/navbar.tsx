@@ -1,8 +1,9 @@
 "use client";
 
+import { Laptop, Menu, Moon, Sun } from "lucide-react";
 import Link from "next/link";
-import { Menu, Sun, Moon, Laptop } from "lucide-react";
 import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   NavigationMenu,
+  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuList,
   NavigationMenuTrigger,
-  NavigationMenuContent,
 } from "@/components/ui/navigation-menu";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 export function Navbar() {
@@ -31,9 +31,7 @@ export function Navbar() {
               <span className="text-2xl font-bold">Stardex</span>
             </Link>
             <Separator orientation="vertical" className="h-6" />
-            <p className="text-base font-medium">
-              Explore GitHub Stars Intelligently
-            </p>
+            <p className="text-base font-medium">Explore GitHub Stars Intelligently</p>
           </div>
 
           <div className="flex items-center gap-4 ml-auto">

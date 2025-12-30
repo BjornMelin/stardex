@@ -2,10 +2,7 @@ import { z } from "zod";
 
 export const githubUsernameSchema = z
   .string()
-  .regex(
-    /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/,
-    "Invalid GitHub username format"
-  );
+  .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}$/, "Invalid GitHub username format");
 
 export interface GitHubUser {
   login: string;
@@ -46,13 +43,48 @@ export interface GitHubList {
 const GITHUB_API_BASE = "https://api.github.com";
 
 export class RateLimitError extends Error {
-  constructor(message: string, public resetTime: Date) {
+  constructor(
+    message: string,
+    public resetTime: Date
+  ) {
     super(message);
     this.name = "RateLimitError";
   }
 }
 
-async function delay(ms: number) {
+function parseRetryAfterSeconds(raw: string | null): number | null {
+  if (!raw) return null;
+  const seconds = Number.parseInt(raw, 10);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+function parseRateLimitResetSeconds(raw: string | null): number | null {
+  if (!raw) return null;
+  const seconds = Number.parseInt(raw, 10);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+function getRateLimitResetTime(response: Response): Date | null {
+  const retryAfter = parseRetryAfterSeconds(response.headers.get("retry-after"));
+  if (retryAfter) return new Date(Date.now() + retryAfter * 1000);
+
+  const resetSeconds = parseRateLimitResetSeconds(response.headers.get("x-ratelimit-reset"));
+  if (resetSeconds) return new Date(resetSeconds * 1000);
+
+  return null;
+}
+
+function isRateLimited(response: Response): boolean {
+  if (response.status === 429) return true;
+  if (response.status !== 403) return false;
+
+  const remaining = response.headers.get("x-ratelimit-remaining");
+  if (remaining === "0") return true;
+
+  return getRateLimitResetTime(response) !== null;
+}
+
+async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -71,15 +103,13 @@ async function fetchWithRetry(
         },
       });
 
-      if (response.status === 403) {
-        const resetTime = new Date(
-          Number(response.headers.get("x-ratelimit-reset")) * 1000
-        );
-        throw new RateLimitError("Rate limit exceeded", resetTime);
+      if (isRateLimited(response)) {
+        const resetTime = getRateLimitResetTime(response) ?? new Date(Date.now() + 60_000);
+        throw new RateLimitError("GitHub API rate limit exceeded", resetTime);
       }
 
       if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.statusText}`);
+        throw new Error(`GitHub API error (${response.status}): ${response.statusText}`);
       }
 
       return response;
@@ -100,13 +130,14 @@ export async function searchUsers(query: string): Promise<GitHubUser[]> {
 
   try {
     const response = await fetchWithRetry(
-      `${GITHUB_API_BASE}/search/users?q=${encodeURIComponent(
-        query
-      )}+in:login&per_page=5`
+      `${GITHUB_API_BASE}/search/users?q=${encodeURIComponent(query)}+in:login&per_page=5`
     );
 
     const data = await response.json();
-    return data.items;
+    if (data && typeof data === "object" && "items" in data && Array.isArray(data.items)) {
+      return data.items;
+    }
+    return [];
   } catch (error) {
     if (error instanceof RateLimitError) throw error;
     console.error("Error searching GitHub users:", error);
@@ -127,7 +158,11 @@ export async function getStarredRepos(username: string): Promise<GitHubRepo[]> {
         )}/starred?per_page=${perPage}&page=${page}`
       );
 
-      const repos = await response.json();
+      const payload = await response.json();
+      const repos = (Array.isArray(payload) ? payload : []).map((repo) => ({
+        ...repo,
+        topics: Array.isArray(repo?.topics) ? repo.topics : [],
+      })) as GitHubRepo[];
       if (!repos.length) break;
 
       allRepos.push(...repos);

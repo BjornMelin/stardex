@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.mjs";
 
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -101,7 +100,9 @@
 }
 
 .animate-in {
-  animation: fade-in 0.5s ease-out forwards, slide-in-from-bottom 0.5s ease-out forwards;
+  animation:
+    fade-in 0.5s ease-out forwards,
+    slide-in-from-bottom 0.5s ease-out forwards;
 }
 
 .slide-in-from-bottom-4 {

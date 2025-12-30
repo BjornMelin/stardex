@@ -19,14 +19,14 @@ Run from repo root:
 - `pnpm dev`: run backend (`:8000`) + frontend dev server concurrently.
 - `pnpm build`: compile backend (`python -m compileall`) + build frontend.
 - `pnpm test`: run `pytest` (backend) + `vitest run` (frontend).
-- `pnpm typecheck`: run `mypy backend/app` + `tsc --noEmit`.
+- `pnpm typecheck`: run `pyright` (backend) + `tsc --noEmit`.
 - `pnpm lint`: run frontend ESLint.
 - `pnpm biome`: run frontend Biome checks (format/lint).
 
 ## Coding Style & Naming Conventions
 
 - Frontend: TypeScript/React with Biome formatting (run `pnpm -C frontend biome:format`) and ESLint. Use `PascalCase` for components and `kebab-case` for routes/segments under `frontend/app/` as needed.
-- Backend: Python 3.11+ with `black` + `isort` (run `cd backend && poetry run black app tests && poetry run isort app tests`). Prefer explicit types; keep `mypy` clean (`pnpm typecheck:backend`).
+- Backend: Python 3.11+ with Ruff + Pyright (run `cd backend && uv run ruff format` and `cd backend && uv run ruff check`). Prefer explicit types; keep Pyright clean (`pnpm typecheck:backend`).
 
 ## Testing Guidelines
 

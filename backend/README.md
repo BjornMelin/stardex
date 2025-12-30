@@ -16,51 +16,34 @@ Backend service for the GitHub Stars Explorer, providing advanced repository clu
 
 ## Prerequisites
 
-- Python 3.10 or higher
-- Poetry package manager
-- Virtual environment (recommended)
+- Python 3.11 or higher
+- uv
 
 ## Installation
 
-### 1. Set Up Python Virtual Environment
+### 1. Install Dependencies
 
 ```bash
-# Create virtual environment
 cd backend
-python -m venv .venv
-
-# Activate virtual environment
-# On Windows:
-.venv\Scripts\activate
-# On macOS/Linux:
-source .venv/bin/activate
+uv sync
 ```
 
-### 2. Install Poetry
-
-```bash
-# Install poetry if you haven't already
-pip install poetry
-
-# Verify installation
-poetry --version
-```
-
-### 3. Install Dependencies
-
-```bash
-# Install project dependencies
-poetry install --no-root
-```
-
-### 4. Start the Development Server
+### 2. Start the Development Server
 
 ```bash
 # Start the FastAPI server with hot reload
-poetry run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at [http://localhost:8000](http://localhost:8000)
+
+### 3. CORS Configuration
+
+Set allowed frontend origins with `CORS_ORIGINS` (comma-separated). Example:
+
+```bash
+export CORS_ORIGINS="http://localhost:3000"
+```
 
 ## API Documentation
 
@@ -140,10 +123,9 @@ backend/
 │   ├── main.py          # FastAPI application and unified clustering endpoint
 │   ├── models.py        # Pydantic models for request/response
 │   ├── clustering.py    # Clustering implementations using scikit-learn
-│   └── services/        # Additional services (if needed)
 ├── .venv/               # Virtual environment (not in git)
-├── pyproject.toml       # Poetry project configuration
-├── poetry.lock         # Lock file (should be committed)
+├── pyproject.toml       # Project configuration (PEP 621)
+├── uv.lock              # Lock file (should be committed)
 └── README.md          # This file
 ```
 
@@ -178,17 +160,30 @@ backend/
 
 1. **Dependencies**
 
-   - Use Poetry for managing dependencies
-   - The `poetry.lock` file should be committed
-   - Add new dependencies: `poetry add package-name`
-   - Add dev dependencies: `poetry add -D package-name`
+   - Use uv for managing dependencies
+   - The `uv.lock` file should be committed
+   - Add new dependencies: `uv add package-name`
+   - Add dev dependencies: `uv add --group dev package-name`
 
 2. **Code Style**
-   - Use black for code formatting:
+   - Format and lint with Ruff:
 
      ```bash
-     poetry run black app/
+     uv run ruff format
+     uv run ruff check
      ```
+
+3. **Type Checking**
+
+   ```bash
+   uv run pyright
+   ```
+
+4. **Tests**
+
+   ```bash
+   uv run python -m pytest
+   ```
 
 ## Performance Considerations
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { UserSearch } from "@/components/features/user/user-search";
+import { Boxes, GitBranch, Search } from "lucide-react";
 import { RepositoryList } from "@/components/features/repository/list-view/repository-list";
-import { Search, GitBranch, Boxes } from "lucide-react";
+import { UserSearch } from "@/components/features/user/user-search";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGitHubStore } from "@/store/github";
 
@@ -30,8 +30,7 @@ export default function Home() {
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000">
-              Explore GitHub Stars Intelligently with advanced clustering and
-              organization
+              Explore GitHub Stars Intelligently with advanced clustering and organization
             </p>
 
             <div className="animate-in fade-in slide-in-from-bottom-16 duration-1000">
@@ -61,8 +60,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">Smart Search</h3>
                 <p className="text-muted-foreground">
-                  Find repositories quickly with intelligent search and
-                  filtering
+                  Find repositories quickly with intelligent search and filtering
                 </p>
               </CardContent>
             </Card>
@@ -74,8 +72,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-semibold">AI Clustering</h3>
                 <p className="text-muted-foreground">
-                  Automatically group similar repositories using machine
-                  learning
+                  Automatically group similar repositories using machine learning
                 </p>
               </CardContent>
             </Card>

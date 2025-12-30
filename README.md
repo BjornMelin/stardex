@@ -2,15 +2,15 @@
 
 > 🚀 Discover patterns in your GitHub stars through machine learning
 
-[![Next.js](https://img.shields.io/badge/Next.js-13-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.9-3776AB?style=flat-square&logo=python)](https://www.python.org/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8-F7931E?style=flat-square&logo=scikit-learn)](https://scikit-learn.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://www.python.org/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-4.1-38B2AC?logo=tailwind-css)](https://tailwindcss.com)
 [![GitHub](https://img.shields.io/badge/GitHub-BjornMelin-181717?logo=github)](https://github.com/BjornMelin)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
-[![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev)
 
 Stardex helps you explore and understand your GitHub starred repositories through advanced machine learning clustering and interactive visualizations.
 
@@ -42,8 +42,8 @@ Stardex helps you explore and understand your GitHub starred repositories throug
 
 - **Frontend**
 
-  - Next.js 13 with App Router
-  - React 18 with TypeScript
+  - Next.js 16 with App Router
+  - React 19 with TypeScript
   - TanStack Query for data management
   - D3.js for visualizations
   - Tailwind CSS for styling
@@ -52,7 +52,7 @@ Stardex helps you explore and understand your GitHub starred repositories throug
 - **Backend**
   - FastAPI for REST API
   - scikit-learn for ML operations
-  - Poetry for dependency management
+  - uv for dependency management
   - Pydantic for data validation
 
 ## 🔎 Detailed Features
@@ -110,16 +110,12 @@ The application is structured as a monorepo with two main services:
 1. **Clone & Install:**
 
    ```bash
-   # Install root dependencies
-   npm install
-
-   # Install frontend dependencies
-   cd frontend
-   npm install
+   # Install frontend + root (workspace) dependencies
+   pnpm install
 
    # Install backend dependencies
-   cd ../backend
-   poetry install
+   cd backend
+   uv sync
    ```
 
 2. **Environment Setup:**
@@ -133,16 +129,16 @@ The application is structured as a monorepo with two main services:
 
    ```bash
    # Run both services
-   npm run dev
+   pnpm run dev
 
    # Or run individually
-   npm run dev:frontend
-   npm run dev:backend
+   pnpm run dev:frontend
+   pnpm run dev:backend
    ```
 
 ## 🔌 API Reference
 
-### 🔄 POST /api/cluster
+### 🔄 POST /clustering
 
 Clusters GitHub repositories based on their features.
 
@@ -171,7 +167,10 @@ Clusters GitHub repositories based on their features.
       },
       "updated_at": string
     }
-  ]
+  ],
+  "kmeans_clusters": number,
+  "hierarchical_threshold": number,
+  "pca_components": number
 }
 ```
 
@@ -181,15 +180,28 @@ Clusters GitHub repositories based on their features.
 <summary>Response</summary>
 
 ```json
-[
-  {
-    "repo": {
-      // Repository data (same as input)
-    },
-    "cluster_id": number,
-    "coordinates": [number, number]
-  }
-]
+{
+  "status": "success",
+  "kmeans_clusters": {
+    "algorithm": "kmeans",
+    "clusters": { "0": [0, 2, 4], "1": [1, 3, 5] },
+    "parameters": { "num_clusters": 2 },
+    "processing_time_ms": 150.5
+  },
+  "hierarchical_clusters": {
+    "algorithm": "hierarchical",
+    "clusters": { "1": [0, 2], "2": [1, 3], "3": [4, 5] },
+    "parameters": { "distance_threshold": 1.5 },
+    "processing_time_ms": 200.3
+  },
+  "pca_hierarchical_clusters": {
+    "algorithm": "pca_hierarchical",
+    "clusters": { "1": [0, 2, 4], "2": [1, 3, 5] },
+    "parameters": { "n_components": 10, "distance_threshold": 1.5 },
+    "processing_time_ms": 180.7
+  },
+  "total_processing_time_ms": 531.5
+}
 ```
 
 </details>
@@ -237,12 +249,12 @@ The clustering process follows these steps:
 
 - 📝 **Style Guides**
 
-  - Frontend: ESLint + Prettier
+  - Frontend: ESLint + Biome
   - Backend: Black + isort
 
 - ✅ **Testing**
 
-  - Frontend: Jest + React Testing Library
+  - Frontend: Vitest
   - Backend: pytest
 
 - 🔄 **Git Workflow**

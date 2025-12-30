@@ -1,20 +1,24 @@
+import { z } from "zod";
 import { GitHubRepo } from "./github";
 
-export interface ClusterResult {
-  algorithm: string;
-  clusters: { [key: number]: number[] };
-  parameters: { [key: string]: number };
-  processing_time_ms: number;
-}
+const ClusterResultSchema = z.strictObject({
+  algorithm: z.string(),
+  clusters: z.record(z.string(), z.array(z.number().int().nonnegative())),
+  parameters: z.record(z.string(), z.number()),
+  processing_time_ms: z.number().nonnegative(),
+});
 
-export interface ClusteringResponse {
-  status: string;
-  kmeans_clusters?: ClusterResult;
-  hierarchical_clusters?: ClusterResult;
-  pca_hierarchical_clusters?: ClusterResult;
-  error_message?: string;
-  total_processing_time_ms: number;
-}
+const ClusteringResponseSchema = z.strictObject({
+  status: z.enum(["success", "error"]),
+  kmeans_clusters: ClusterResultSchema.optional(),
+  hierarchical_clusters: ClusterResultSchema.optional(),
+  pca_hierarchical_clusters: ClusterResultSchema.optional(),
+  error_message: z.string().optional().nullable(),
+  total_processing_time_ms: z.number().nonnegative(),
+});
+
+export type ClusterResult = z.infer<typeof ClusterResultSchema>;
+export type ClusteringResponse = z.infer<typeof ClusteringResponseSchema>;
 
 export interface ClusteringRequest {
   repositories: GitHubRepo[];
@@ -23,45 +27,120 @@ export interface ClusteringRequest {
   pca_components: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-export async function clusterRepositories(
-  request: ClusteringRequest
-): Promise<ClusteringResponse> {
-  try {
-    const response = await fetch(`${API_BASE}/clustering`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.detail || `Clustering API error: ${response.statusText}`
-      );
-    }
-
-    const result: ClusteringResponse = await response.json();
-
-    if (result.status === "error") {
-      throw new Error(result.error_message || "Unknown clustering error");
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Error clustering repositories:", error);
-    return {
-      status: "error",
-      error_message:
-        error instanceof Error
-          ? error.message
-          : "Failed to cluster repositories",
-      total_processing_time_ms: 0,
-    };
+export class ClusteringApiError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly payload?: unknown
+  ) {
+    super(message);
+    this.name = "ClusteringApiError";
   }
+}
+
+function normalizeApiBase(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  if (!trimmed) return "http://localhost:8000";
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "http://localhost:8000";
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return "http://localhost:8000";
+  }
+}
+
+const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
+
+async function readJsonOrText(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function extractErrorMessage(payload: unknown, fallback: string): string {
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+
+    if (typeof obj.error_message === "string") {
+      return obj.error_message;
+    }
+
+    if ("detail" in obj) {
+      const detail = obj.detail;
+      if (typeof detail === "string") return detail;
+      try {
+        return JSON.stringify(detail);
+      } catch {
+        return fallback;
+      }
+    }
+  }
+
+  if (typeof payload === "string" && payload.trim()) return payload;
+
+  return fallback;
+}
+
+export async function clusterRepositories(request: ClusteringRequest): Promise<ClusteringResponse> {
+  const sanitizedRepos = request.repositories.map((repo) => ({
+    id: repo.id,
+    name: repo.name,
+    full_name: repo.full_name,
+    description: repo.description,
+    html_url: repo.html_url,
+    stargazers_count: repo.stargazers_count,
+    forks_count: repo.forks_count,
+    open_issues_count: repo.open_issues_count,
+    size: repo.size,
+    watchers_count: repo.watchers_count,
+    language: repo.language,
+    topics: Array.isArray(repo.topics) ? repo.topics : [],
+    owner: {
+      login: repo.owner.login,
+      avatar_url: repo.owner.avatar_url,
+    },
+    updated_at: repo.updated_at,
+  }));
+
+  const response = await fetch(`${API_BASE}/clustering`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...request, repositories: sanitizedRepos }),
+  });
+
+  const payload = await readJsonOrText(response);
+
+  if (!response.ok) {
+    const message = extractErrorMessage(payload, `Clustering API error (${response.status})`);
+    throw new ClusteringApiError(message, response.status, payload);
+  }
+
+  const parsed = ClusteringResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new ClusteringApiError(
+      `Invalid clustering response: ${z.prettifyError(parsed.error)}`,
+      response.status,
+      payload
+    );
+  }
+
+  if (parsed.data.status === "error") {
+    throw new ClusteringApiError(
+      parsed.data.error_message ?? "Unknown clustering error",
+      response.status,
+      payload
+    );
+  }
+
+  return parsed.data;
 }
 
 // Default clustering configuration
@@ -95,10 +174,12 @@ export const algorithmDescriptions = {
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/health`);
-    const data = await response.json();
-    return data.status === "healthy";
-  } catch (error) {
-    console.error("Backend health check failed:", error);
+    if (!response.ok) return false;
+    const data = await readJsonOrText(response);
+    return Boolean(
+      data && typeof data === "object" && "status" in data && data.status === "healthy"
+    );
+  } catch {
     return false;
   }
 }
