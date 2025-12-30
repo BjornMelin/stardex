@@ -1,5 +1,5 @@
-import { GitHubRepo } from "@/lib/github";
 import { ClusterResult } from "@/lib/clustering-api";
+import { GitHubRepo } from "@/lib/github";
 
 export interface ClusterViewProps {
   result: ClusterResult;

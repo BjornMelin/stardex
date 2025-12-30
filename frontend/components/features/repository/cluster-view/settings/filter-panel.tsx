@@ -1,13 +1,9 @@
 "use client";
 
-import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { CLUSTERING_CONFIG, CLUSTERING_HELP_TEXT } from "@/lib/constants/clustering";
 import { ClusterFilters } from "@/lib/types/clustering";
-import {
-  CLUSTERING_HELP_TEXT,
-  CLUSTERING_CONFIG,
-} from "@/lib/constants/clustering";
 
 interface FilterPanelProps {
   filters: ClusterFilters;
@@ -97,22 +93,16 @@ export function FilterPanel({
         <div className="h-16 w-full rounded-md border overflow-y-auto bg-muted/5">
           <div className="p-1.5">
             <div className="flex flex-wrap gap-1">
-              {availableLanguages
-                .slice(0, CLUSTERING_CONFIG.filters.maxLanguages)
-                .map((lang) => (
-                  <Badge
-                    key={lang}
-                    variant={
-                      filters.languages?.includes(lang)
-                        ? "default"
-                        : "outline"
-                    }
-                    className="cursor-pointer text-xs"
-                    onClick={() => toggleLanguage(lang)}
-                  >
-                    {lang}
-                  </Badge>
-                ))}
+              {availableLanguages.slice(0, CLUSTERING_CONFIG.filters.maxLanguages).map((lang) => (
+                <Badge
+                  key={lang}
+                  variant={filters.languages?.includes(lang) ? "default" : "outline"}
+                  className="cursor-pointer text-xs"
+                  onClick={() => toggleLanguage(lang)}
+                >
+                  {lang}
+                </Badge>
+              ))}
             </div>
           </div>
         </div>
@@ -123,20 +113,16 @@ export function FilterPanel({
         <div className="h-16 w-full rounded-md border overflow-y-auto bg-muted/5">
           <div className="p-1.5">
             <div className="flex flex-wrap gap-1">
-              {availableTopics
-                .slice(0, CLUSTERING_CONFIG.filters.maxTopics)
-                .map((topic) => (
-                  <Badge
-                    key={topic}
-                    variant={
-                      filters.topics?.includes(topic) ? "default" : "outline"
-                    }
-                    className="cursor-pointer text-xs"
-                    onClick={() => toggleTopic(topic)}
-                  >
-                    {topic}
-                  </Badge>
-                ))}
+              {availableTopics.slice(0, CLUSTERING_CONFIG.filters.maxTopics).map((topic) => (
+                <Badge
+                  key={topic}
+                  variant={filters.topics?.includes(topic) ? "default" : "outline"}
+                  className="cursor-pointer text-xs"
+                  onClick={() => toggleTopic(topic)}
+                >
+                  {topic}
+                </Badge>
+              ))}
             </div>
           </div>
         </div>

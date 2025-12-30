@@ -1,25 +1,185 @@
-[tool.poetry]
+# ============================================================================
+# PROJECT METADATA (PEP 621)
+# ============================================================================
+
+[project]
 name = "stardex-backend"
 version = "0.1.0"
 description = "Backend service for GitHub Stars Explorer"
-authors = ["Bjorn Melin"]
-package-mode = false
+readme = "README.md"
+authors = [{ name = "Bjorn Melin" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.128.0",
+    "uvicorn>=0.40.0",
+    "numpy>=2.4.0",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
+    "scikit-learn>=1.8.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-fastapi = "^0.115.7"
-uvicorn = "^0.34.0"
-numpy = ">=2.2.2"
-pydantic = "^2.10.6"
-python-dotenv = "^1.0.1"
-scikit-learn = "^1.6.1"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-black = "^24.10.0"
-isort = "^5.13.2"
-mypy = "^1.14.1"
+# ============================================================================
+# BUILD SYSTEM
+# ============================================================================
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ============================================================================
+# DEVELOPMENT DEPENDENCIES (PEP 735)
+# ============================================================================
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+]
+lint = [
+    "ruff>=0.8.0",
+    "pyright>=1.1.390",
+]
+
+# ============================================================================
+# UV CONFIGURATION
+# ============================================================================
+
+[tool.uv]
+default-groups = ["dev", "lint"]
+package = false
+
+# ============================================================================
+# RUFF CONFIGURATION
+# ============================================================================
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+indent-width = 4
+src = ["app", "tests"]
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Formatter conflicts (handled by ruff format)
+    "W191",   # tab-indentation
+    "E111",   # indentation-with-invalid-multiple
+    "E114",   # indentation-with-invalid-multiple-comment
+    "E117",   # over-indented
+    "D206",   # indent-with-spaces
+    "D300",   # triple-single-quotes
+    "Q000",   # bad-quotes-inline-string
+    "Q001",   # bad-quotes-multiline-string
+    "Q002",   # bad-quotes-docstring
+    "Q003",   # avoidable-escaped-quote
+    "COM812", # missing-trailing-comma (conflicts with formatter)
+    "COM819", # prohibited-trailing-comma
+    "ISC001", # single-line-implicit-string-concatenation
+    "ISC002", # multi-line-implicit-string-concatenation
+    # Docstring style conflicts (D211 vs D203, D212 vs D213)
+    "D203",   # one-blank-line-before-class (conflicts with D211)
+    "D213",   # multi-line-summary-second-line (conflicts with D212)
+    # Too strict for this project
+    "D100",   # undocumented-public-module
+    "D104",   # undocumented-public-package
+    "D107",   # undocumented-public-init
+    "ANN401", # dynamically-typed-expressions (Any)
+    # Common patterns
+    "FBT001", # boolean-positional-arg-in-function-definition
+    "FBT002", # boolean-default-value-in-function-definition
+    "PLR0913", # too-many-arguments
+    "PLR2004", # magic-value-comparison
+    # Allow TODO comments
+    "FIX002", # line-contains-todo
+    "TD002",  # missing-todo-author
+    "TD003",  # missing-todo-link
+]
+fixable = ["ALL"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",    # assert
+    "D100",    # undocumented-public-module
+    "D101",    # undocumented-public-class
+    "D102",    # undocumented-public-method
+    "D103",    # undocumented-public-function
+    "D104",    # undocumented-public-package
+    "PLR2004", # magic-value-comparison
+    "ARG001",  # unused-function-argument (fixtures)
+    "ARG002",  # unused-method-argument
+]
+"__init__.py" = ["F401", "F403"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+lines-after-imports = 2
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 15
+max-returns = 8
+max-statements = 60
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 80
+
+# ============================================================================
+# PYRIGHT CONFIGURATION
+# ============================================================================
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "standard"
+include = ["app", "tests"]
+exclude = ["**/__pycache__", "**/.venv", "**/build", "**/dist"]
+venvPath = "."
+venv = ".venv"
+
+# Elevate important checks
+reportMissingImports = "error"
+reportMissingTypeStubs = "warning"
+reportUnusedImport = "error"
+reportDuplicateImport = "error"
+
+# ============================================================================
+# PYTEST CONFIGURATION
+# ============================================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+
+# ============================================================================
+# COVERAGE CONFIGURATION
+# ============================================================================
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    'if __name__ == "__main__":',
+]

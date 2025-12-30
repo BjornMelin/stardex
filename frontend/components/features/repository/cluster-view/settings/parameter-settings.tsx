@@ -1,23 +1,21 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Slider } from "@/components/ui/slider";
+import { CLUSTERING_CONFIG, CLUSTERING_HELP_TEXT } from "@/lib/constants/clustering";
 import { ClusterParameterSettings } from "@/lib/types/clustering";
-import {
-  CLUSTERING_HELP_TEXT,
-  CLUSTERING_CONFIG,
-} from "@/lib/constants/clustering";
 
 interface ParameterSettingsProps {
   settings: ClusterParameterSettings;
   onSettingsChange: (settings: ClusterParameterSettings) => void;
 }
 
-export function ParameterSettings({
-  settings,
-  onSettingsChange,
-}: ParameterSettingsProps) {
+export function ParameterSettings({ settings, onSettingsChange }: ParameterSettingsProps) {
   const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
 
   const handleSettingChange = useCallback(
     (key: keyof ClusterParameterSettings, value: number) => {
@@ -45,11 +43,9 @@ export function ParameterSettings({
           max={CLUSTERING_CONFIG.kmeans.max}
           step={CLUSTERING_CONFIG.kmeans.step}
           onValueChange={([value]) =>
-            setLocalSettings({ ...localSettings, kmeans_clusters: value })
+            setLocalSettings((prev) => ({ ...prev, kmeans_clusters: value }))
           }
-          onValueCommit={([value]) =>
-            handleSettingChange("kmeans_clusters", value)
-          }
+          onValueCommit={([value]) => handleSettingChange("kmeans_clusters", value)}
         />
       </div>
 
@@ -68,22 +64,18 @@ export function ParameterSettings({
           max={CLUSTERING_CONFIG.hierarchical.max}
           step={CLUSTERING_CONFIG.hierarchical.step}
           onValueChange={([value]) =>
-            setLocalSettings({
-              ...localSettings,
+            setLocalSettings((prev) => ({
+              ...prev,
               hierarchical_threshold: value,
-            })
+            }))
           }
-          onValueCommit={([value]) =>
-            handleSettingChange("hierarchical_threshold", value)
-          }
+          onValueCommit={([value]) => handleSettingChange("hierarchical_threshold", value)}
         />
       </div>
 
       <div>
         <div className="flex justify-between items-baseline mb-2">
-          <label className="text-xs font-medium">
-            {CLUSTERING_HELP_TEXT.settings.pca.title}
-          </label>
+          <label className="text-xs font-medium">{CLUSTERING_HELP_TEXT.settings.pca.title}</label>
           <span className="text-xs text-muted-foreground">
             {localSettings.pca_components} components
           </span>
@@ -94,11 +86,9 @@ export function ParameterSettings({
           max={CLUSTERING_CONFIG.pca.max}
           step={CLUSTERING_CONFIG.pca.step}
           onValueChange={([value]) =>
-            setLocalSettings({ ...localSettings, pca_components: value })
+            setLocalSettings((prev) => ({ ...prev, pca_components: value }))
           }
-          onValueCommit={([value]) =>
-            handleSettingChange("pca_components", value)
-          }
+          onValueCommit={([value]) => handleSettingChange("pca_components", value)}
         />
       </div>
     </div>

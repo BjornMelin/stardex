@@ -11,6 +11,7 @@ node_modules/
 # next.js
 .next/
 /out/
+frontend/out/
 
 # production
 /build
@@ -80,3 +81,6 @@ Thumbs.db
 
 # repomix
 repomix-output.txt
+
+# Agent Files
+CLAUDE.md

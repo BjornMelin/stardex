@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { GitHubRepo } from "../lib/github";
-import type { FilterCriteria } from "../components/repository/repository-filters";
+import type { FilterCriteria } from "../lib/types/repository-filters";
 
 interface GitHubStore {
   selectedUsers: string[];
@@ -48,7 +48,7 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
   clearRepos: () => set({ repos: {} }),
   filters: {
     search: "",
-    language: "",
+    language: null,
     minStars: 0,
     topics: [],
     sortBy: "stars",
@@ -89,16 +89,12 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
       );
     }
 
-    if (state.filters.language && state.filters.language !== "_all") {
-      allRepos = allRepos.filter(
-        (repo) => repo.language === state.filters.language
-      );
+    if (state.filters.language) {
+      allRepos = allRepos.filter((repo) => repo.language === state.filters.language);
     }
 
     if (state.filters.minStars > 0) {
-      allRepos = allRepos.filter(
-        (repo) => repo.stargazers_count >= state.filters.minStars
-      );
+      allRepos = allRepos.filter((repo) => repo.stargazers_count >= state.filters.minStars);
     }
 
     if (state.filters.topics.length > 0) {
@@ -114,8 +110,7 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
         break;
       case "updated":
         allRepos.sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
         );
         break;
       case "name":

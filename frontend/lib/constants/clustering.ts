@@ -20,17 +20,14 @@ export const CLUSTERING_HELP_TEXT = {
   },
   filters: {
     title: "Filter Settings",
-    description:
-      "Control which clusters are displayed based on their properties.",
+    description: "Control which clusters are displayed based on their properties.",
     stars: {
       title: "Star Count Range",
-      description:
-        "Filter clusters based on the average number of stars their repositories have.",
+      description: "Filter clusters based on the average number of stars their repositories have.",
     },
     languages: {
       title: "Languages & Topics",
-      description:
-        "Show only clusters containing repositories with specific languages or topics.",
+      description: "Show only clusters containing repositories with specific languages or topics.",
     },
   },
 };
@@ -74,8 +71,7 @@ export const CLUSTERING_ALGORITHMS = {
   kmeans: {
     id: "kmeans",
     name: "K-Means",
-    description:
-      "Groups repositories into distinct clusters based on feature similarity",
+    description: "Groups repositories into distinct clusters based on feature similarity",
   },
   hierarchical: {
     id: "hierarchical",

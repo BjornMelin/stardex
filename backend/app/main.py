@@ -1,14 +1,27 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-import time
-from typing import List
+"""FastAPI backend for Stardex GitHub repository clustering service."""
 
-from app.models import ClusteringRequest, ClusteringResponse, ClusterResult
+import logging
+import os
+import time
+from typing import Any
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
 from app.clustering import (
-    perform_kmeans,
     perform_hierarchical,
+    perform_kmeans,
     perform_pca_hierarchical,
 )
+from app.models import ClusteringRequest, ClusteringResponse, ClusterResult, GitHubRepo
+
+
+logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 app = FastAPI(
     title="Stardex Backend",
@@ -16,36 +29,46 @@ app = FastAPI(
     description="API for clustering GitHub repositories using multiple algorithms",
 )
 
+
+def parse_cors_origins(raw: str | None) -> list[str]:
+    """Parse a comma-separated CORS origins string."""
+    if not raw:
+        return ["http://localhost:3000"]
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return origins or ["http://localhost:3000"]
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=parse_cors_origins(os.getenv("CORS_ORIGINS")),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    """Handle ValueError exceptions."""
-    return ClusteringResponse(
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Return request validation errors using the ClusteringResponse shape."""
+    payload = ClusteringResponse(
         status="error", error_message=str(exc), total_processing_time_ms=0
-    )
+    ).model_dump()
+    return JSONResponse(status_code=422, content=payload)
 
 
-def extract_repo_descriptions(repositories: List[dict]) -> List[str]:
+def extract_repo_descriptions(repositories: list[GitHubRepo]) -> list[str]:
     """Extract descriptions from repositories, handling None values."""
-    return [
-        repo.description or repo.name  # Use name if description is None
-        for repo in repositories
-    ]
+    return [(repo.description or "").strip() or repo.name for repo in repositories]
 
 
-@app.post("/clustering", response_model=ClusteringResponse)
-def perform_all_clustering(request: ClusteringRequest):
-    """
-    Perform all clustering algorithms on the provided repository data.
+@app.post("/clustering")
+def perform_all_clustering(
+    request: ClusteringRequest, http_response: Response
+) -> ClusteringResponse:
+    """Perform all clustering algorithms on the provided repository data.
 
     This endpoint runs:
     1. K-means clustering
@@ -54,18 +77,18 @@ def perform_all_clustering(request: ClusteringRequest):
 
     Each algorithm runs independently and their results are combined in the response.
     """
-    start_time = time.time()
+    start_time = time.perf_counter()
     descriptions = extract_repo_descriptions(request.repositories)
 
-    response = ClusteringResponse(status="success", total_processing_time_ms=0)
+    result = ClusteringResponse(status="success", total_processing_time_ms=0)
 
     try:
         # Perform K-means clustering
-        kmeans_start = time.time()
+        kmeans_start = time.perf_counter()
         kmeans_clusters = perform_kmeans(descriptions, request.kmeans_clusters)
-        kmeans_time = (time.time() - kmeans_start) * 1000
+        kmeans_time = (time.perf_counter() - kmeans_start) * 1000
 
-        response.kmeans_clusters = ClusterResult(
+        result.kmeans_clusters = ClusterResult(
             algorithm="kmeans",
             clusters=kmeans_clusters,
             parameters={"num_clusters": request.kmeans_clusters},
@@ -73,13 +96,13 @@ def perform_all_clustering(request: ClusteringRequest):
         )
 
         # Perform hierarchical clustering
-        hierarchical_start = time.time()
+        hierarchical_start = time.perf_counter()
         hierarchical_clusters = perform_hierarchical(
             descriptions, distance_threshold=request.hierarchical_threshold
         )
-        hierarchical_time = (time.time() - hierarchical_start) * 1000
+        hierarchical_time = (time.perf_counter() - hierarchical_start) * 1000
 
-        response.hierarchical_clusters = ClusterResult(
+        result.hierarchical_clusters = ClusterResult(
             algorithm="hierarchical",
             clusters=hierarchical_clusters,
             parameters={"distance_threshold": request.hierarchical_threshold},
@@ -87,15 +110,15 @@ def perform_all_clustering(request: ClusteringRequest):
         )
 
         # Perform PCA + hierarchical clustering
-        pca_start = time.time()
+        pca_start = time.perf_counter()
         pca_clusters = perform_pca_hierarchical(
             descriptions,
             n_components=request.pca_components,
             distance_threshold=request.hierarchical_threshold,
         )
-        pca_time = (time.time() - pca_start) * 1000
+        pca_time = (time.perf_counter() - pca_start) * 1000
 
-        response.pca_hierarchical_clusters = ClusterResult(
+        result.pca_hierarchical_clusters = ClusterResult(
             algorithm="pca_hierarchical",
             clusters=pca_clusters,
             parameters={
@@ -106,16 +129,26 @@ def perform_all_clustering(request: ClusteringRequest):
         )
 
         # Calculate total processing time
-        response.total_processing_time_ms = (time.time() - start_time) * 1000
+        result.total_processing_time_ms = (time.perf_counter() - start_time) * 1000
 
-        return response
-
-    except Exception as e:
+    except ValueError as exc:
+        http_response.status_code = 400
         return ClusteringResponse(
             status="error",
-            error_message=str(e),
-            total_processing_time_ms=(time.time() - start_time) * 1000,
+            error_message=str(exc),
+            total_processing_time_ms=(time.perf_counter() - start_time) * 1000,
         )
+
+    except Exception:
+        logger.exception("Clustering failed")
+        http_response.status_code = 500
+        return ClusteringResponse(
+            status="error",
+            error_message="An error occurred during clustering",
+            total_processing_time_ms=(time.perf_counter() - start_time) * 1000,
+        )
+
+    return result
 
 
 @app.get(
@@ -124,7 +157,7 @@ def perform_all_clustering(request: ClusteringRequest):
     description="Returns the current status of the API service",
     response_description="Health status object",
 )
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Health check endpoint."""
     return {
         "status": "healthy",
@@ -136,4 +169,6 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    host = os.getenv("UVICORN_HOST", "127.0.0.1")
+    port = int(os.getenv("UVICORN_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

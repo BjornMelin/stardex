@@ -1,14 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { clusterRepositories } from "@/lib/clustering-api";
 import { GitHubRepo } from "@/lib/github";
+import { ClusterFilters, ClusterParameterSettings } from "@/lib/types/clustering";
 import { ClusterView } from "../cluster-view/cluster-view";
 import { RepositoryLoading } from "../list-view/repository-loading";
-import { ClusterParameterSettings, ClusterFilters } from "@/lib/types/clustering";
 
 interface RepositoryClustersProps {
   repositories: GitHubRepo[];
@@ -23,10 +23,12 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
 
   const [filters, setFilters] = useState<ClusterFilters>({});
 
+  const repoKey = useMemo(() => repositories.map((r) => r.id).join(","), [repositories]);
+
   const { data, isLoading, error } = useQuery({
     queryKey: [
       "clusterResults",
-      repositories.length,
+      repoKey,
       clusterParams.kmeans_clusters,
       clusterParams.hierarchical_threshold,
       clusterParams.pca_components,
@@ -55,10 +57,10 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     results.kmeans
       ? "kmeans"
       : results.hierarchical
-      ? "hierarchical"
-      : results.pca_hierarchical
-      ? "pca_hierarchical"
-      : "kmeans"
+        ? "hierarchical"
+        : results.pca_hierarchical
+          ? "pca_hierarchical"
+          : "kmeans"
   );
 
   if (isLoading) {
@@ -69,9 +71,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          {error instanceof Error
-            ? error.message
-            : "Failed to cluster repositories"}
+          {error instanceof Error ? error.message : "Failed to cluster repositories"}
         </AlertDescription>
       </Alert>
     );
@@ -81,8 +81,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     return (
       <Alert>
         <AlertDescription>
-          No clustering results available. Try adjusting the parameters or
-          adding more repositories.
+          No clustering results available. Try adjusting the parameters or adding more repositories.
         </AlertDescription>
       </Alert>
     );
@@ -92,9 +91,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList className="mb-4">
         {results.kmeans && <TabsTrigger value="kmeans">K-Means</TabsTrigger>}
-        {results.hierarchical && (
-          <TabsTrigger value="hierarchical">Hierarchical</TabsTrigger>
-        )}
+        {results.hierarchical && <TabsTrigger value="hierarchical">Hierarchical</TabsTrigger>}
         {results.pca_hierarchical && (
           <TabsTrigger value="pca_hierarchical">PCA + Hierarchical</TabsTrigger>
         )}

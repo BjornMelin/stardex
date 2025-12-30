@@ -1,30 +1,32 @@
 "use client";
 
+import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GitHubRepo } from "@/lib/github";
-import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { RepositoryCard } from "../shared/repository-card";
 
-interface ClusterCardProps {
-  cluster: {
-    id: number;
-    repositories: GitHubRepo[];
-    metadata: {
-      avgStars: number;
-      languages: string[];
-      size: number;
-      name: string;
-    };
+interface Cluster {
+  id: number;
+  repositories: GitHubRepo[];
+  metadata: {
+    avgStars: number;
+    languages: string[];
+    size: number;
+    name: string;
   };
+}
+
+interface ClusterCardProps {
+  cluster: Cluster;
   algorithm: string;
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
-  getClusterSimilarity: (cluster1: any, cluster2: any) => number;
-  previousCluster?: any;
-  sortedClusters: any[];
+  getClusterSimilarity: (cluster1: Cluster, cluster2: Cluster) => number;
+  previousCluster?: Cluster;
+  sortedClusters: Cluster[];
 }
 
 export function ClusterCard({
@@ -43,9 +45,7 @@ export function ClusterCard({
 
   return (
     <Card
-      className={`relative ${
-        algorithm.includes("hierarchical") ? "pl-7 border-l-2" : "p-4"
-      }`}
+      className={`relative ${algorithm.includes("hierarchical") ? "pl-7 border-l-2" : "p-4"}`}
       style={
         algorithm.includes("hierarchical")
           ? {
@@ -65,12 +65,7 @@ export function ClusterCard({
       )}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1 h-auto"
-            onClick={onToggle}
-          >
+          <Button variant="ghost" size="sm" className="p-1 h-auto" onClick={onToggle}>
             {isExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
@@ -116,10 +111,7 @@ export function ClusterCard({
                         : "text-yellow-600 dark:text-yellow-400"
                     }
                   >
-                    {(getClusterSimilarity(cluster, previousCluster) * 100).toFixed(
-                      0
-                    )}
-                    %
+                    {(getClusterSimilarity(cluster, previousCluster) * 100).toFixed(0)}%
                   </span>
                 </Badge>
               </div>

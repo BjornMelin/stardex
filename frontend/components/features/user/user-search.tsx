@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -14,29 +15,19 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { searchUsers, githubUsernameSchema } from "@/lib/github";
+import { githubUsernameSchema, searchUsers } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
 export function UserSearch() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const { toast } = useToast();
-  const debounceTimer = useRef<NodeJS.Timeout>();
-  const {
-    selectedUsers,
-    addUser,
-    removeUser,
-    clearUsers,
-    setShouldFetchRepos,
-  } = useGitHubStore();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { selectedUsers, addUser, removeUser, clearUsers, setShouldFetchRepos } = useGitHubStore();
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["githubUsers", searchValue],
@@ -46,20 +37,39 @@ export function UserSearch() {
     retry: false,
   });
 
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
   const handleSearch = useCallback((search: string) => {
+    setInputValue(search);
+
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    setSearchValue(search);
+
+    if (search.length === 0) {
+      setSearchValue("");
+      return;
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      setSearchValue(search);
+    }, 250);
   }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && selectedUsers.length > 0) {
+        setShouldFetchRepos(true);
         router.push("/");
       }
     },
-    [router, selectedUsers.length]
+    [router, selectedUsers.length, setShouldFetchRepos]
   );
 
   const handleSelect = useCallback(
@@ -67,9 +77,13 @@ export function UserSearch() {
       try {
         githubUsernameSchema.parse(username);
         addUser(username);
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+        setInputValue("");
         setSearchValue("");
         setOpen(false);
-      } catch (error) {
+      } catch {
         toast({
           title: "Invalid username",
           description: "Please enter a valid GitHub username",
@@ -122,7 +136,7 @@ export function UserSearch() {
             <Command>
               <CommandInput
                 placeholder="Search GitHub users..."
-                value={searchValue}
+                value={inputValue}
                 onValueChange={handleSearch}
                 onKeyDown={handleKeyDown}
                 className="h-9"
@@ -130,22 +144,24 @@ export function UserSearch() {
               <CommandList>
                 <CommandEmpty>No users found.</CommandEmpty>
                 <CommandGroup>
-                  {users?.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      value={user.login}
-                      onSelect={handleSelect}
-                    >
-                      <Image
-                        src={user.avatar_url}
-                        alt={user.login}
-                        width={24}
-                        height={24}
-                        className="mr-2 h-6 w-6 rounded-full"
-                      />
-                      {user.login}
+                  {isLoading ? (
+                    <CommandItem value="__loading" disabled>
+                      Searching...
                     </CommandItem>
-                  ))}
+                  ) : (
+                    users?.map((user) => (
+                      <CommandItem key={user.id} value={user.login} onSelect={handleSelect}>
+                        <Image
+                          src={user.avatar_url}
+                          alt={user.login}
+                          width={24}
+                          height={24}
+                          className="mr-2 h-6 w-6 rounded-full"
+                        />
+                        {user.login}
+                      </CommandItem>
+                    ))
+                  )}
                 </CommandGroup>
               </CommandList>
             </Command>
