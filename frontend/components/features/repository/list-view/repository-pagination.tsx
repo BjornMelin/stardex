@@ -10,6 +10,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
+/** Pages through an already filtered repository collection. */
 export function RepositoryPagination({
   currentPage,
   totalItems,
@@ -30,6 +31,7 @@ export function RepositoryPagination({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1 || isLoading}
+          className="h-11 sm:h-9"
         >
           Previous
         </Button>
@@ -38,6 +40,7 @@ export function RepositoryPagination({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages || isLoading}
+          className="h-11 sm:h-9"
         >
           Next
         </Button>

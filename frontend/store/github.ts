@@ -24,6 +24,7 @@ interface GitHubStore {
   getCurrentPageRepos: () => GitHubRepo[];
 }
 
+/** Stores selected repositories and resets pagination when source or filter state changes. */
 export const useGitHubStore = create<GitHubStore>((set, get) => ({
   selectedUsers: [],
   addUser: (username) =>
@@ -97,7 +98,7 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
   },
   getFilteredAndSortedRepos: () => {
     const state = get();
-    let allRepos = get().getSelectedRepos();
+    let allRepos = state.getSelectedRepos();
 
     // Apply filters
     if (state.filters.search) {

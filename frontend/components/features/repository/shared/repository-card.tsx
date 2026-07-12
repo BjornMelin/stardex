@@ -31,7 +31,7 @@ export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
                     href={repo.html_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:underline inline-flex items-center gap-2"
+                    className="inline-flex min-h-11 items-center gap-2 hover:underline sm:min-h-0"
                   >
                     {repo.full_name}
                     <ExternalLink className="h-3 w-3" />

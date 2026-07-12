@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
+/** Displays the filtered repository collection and derives its current page from that list. */
 export function RepositoryList() {
   const {
     selectedUsers,
@@ -25,7 +26,6 @@ export function RepositoryList() {
     shouldFetchRepos,
     pagination: { currentPage, itemsPerPage },
     setCurrentPage,
-    getCurrentPageRepos,
     getFilteredAndSortedRepos,
   } = useGitHubStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -77,8 +77,9 @@ export function RepositoryList() {
     }
   }, [error, toast]);
 
-  const currentPageRepos = getCurrentPageRepos();
   const allRepos = getFilteredAndSortedRepos();
+  const pageStart = (currentPage - 1) * itemsPerPage;
+  const currentPageRepos = allRepos.slice(pageStart, pageStart + itemsPerPage);
 
   if (selectedUsers.length === 0) {
     return <RepositoryEmptyState />;
@@ -87,12 +88,12 @@ export function RepositoryList() {
   return (
     <div className="space-y-8">
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list" className="flex items-center gap-2">
+        <TabsList className="grid h-auto min-h-11 w-full grid-cols-2 p-0 sm:h-10 sm:min-h-0 sm:p-1">
+          <TabsTrigger value="list" className="min-h-11 gap-2 sm:min-h-0">
             <BookOpen className="h-4 w-4" />
             All Stars
           </TabsTrigger>
-          <TabsTrigger value="similar" className="flex items-center gap-2">
+          <TabsTrigger value="similar" className="min-h-11 gap-2 sm:min-h-0">
             <Star className="h-4 w-4" />
             Similar Repos
           </TabsTrigger>

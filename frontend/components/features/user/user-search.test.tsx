@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchUsers } from "@/lib/github";
 import { UserSearch } from "./user-search";
 
-const { queryState, store } = vi.hoisted(() => ({
+const { queryState, routerPush, store } = vi.hoisted(() => ({
   queryState: { lastKey: undefined as string | undefined },
+  routerPush: vi.fn(),
   store: {
     selectedUsers: [] as string[],
     addUser: vi.fn(),
@@ -12,6 +13,10 @@ const { queryState, store } = vi.hoisted(() => ({
     clearUsers: vi.fn(),
     setShouldFetchRepos: vi.fn(),
   },
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock("next/image", () => ({
@@ -126,5 +131,6 @@ describe("UserSearch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
+    expect(routerPush).not.toHaveBeenCalled();
   });
 });

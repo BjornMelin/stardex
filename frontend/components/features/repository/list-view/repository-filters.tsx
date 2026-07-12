@@ -26,6 +26,7 @@ import type { FilterCriteria, SortOption } from "@/lib/types/repository-filters"
 import { cn } from "@/lib/utils";
 import { useGitHubStore } from "@/store/github";
 
+/** Renders search, sort, and sheet-based filters for the selected repositories. */
 export function RepositoryFilters() {
   const [isOpen, setIsOpen] = useState(false);
   const { filters, setFilters, getSelectedRepos } = useGitHubStore();
@@ -69,7 +70,7 @@ export function RepositoryFilters() {
           <Input
             aria-label="Search repositories"
             placeholder="Search repositories..."
-            className="pl-8 text-base sm:text-sm"
+            className="min-h-11 pl-8 text-base sm:min-h-0 sm:text-sm"
             value={filters.search}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -80,19 +81,30 @@ export function RepositoryFilters() {
         >
           <SelectTrigger
             aria-label="Sort repositories"
-            className="w-full min-w-0 text-base sm:w-[180px] sm:text-sm"
+            className="min-h-11 w-full min-w-0 text-base sm:min-h-0 sm:w-[180px] sm:text-sm"
           >
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="stars">Most Stars</SelectItem>
-            <SelectItem value="updated">Recently Updated</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="stars" className="min-h-11 sm:min-h-0">
+              Most Stars
+            </SelectItem>
+            <SelectItem value="updated" className="min-h-11 sm:min-h-0">
+              Recently Updated
+            </SelectItem>
+            <SelectItem value="name" className="min-h-11 sm:min-h-0">
+              Name
+            </SelectItem>
           </SelectContent>
         </Select>
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button aria-label="Filter repositories" variant="outline" size="icon">
+            <Button
+              aria-label="Filter repositories"
+              variant="outline"
+              size="icon"
+              className="h-11 w-11 sm:h-10 sm:w-10"
+            >
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </SheetTrigger>
@@ -112,13 +124,15 @@ export function RepositoryFilters() {
                     handleFilterChange("language", value === "_all" ? null : value)
                   }
                 >
-                  <SelectTrigger aria-label="Language">
+                  <SelectTrigger aria-label="Language" className="h-11 sm:h-10">
                     <SelectValue placeholder="All Languages" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_all">All Languages</SelectItem>
+                    <SelectItem value="_all" className="min-h-11 sm:min-h-0">
+                      All Languages
+                    </SelectItem>
                     {languages.sort().map((lang) => (
-                      <SelectItem key={lang} value={lang}>
+                      <SelectItem key={lang} value={lang} className="min-h-11 sm:min-h-0">
                         {lang}
                       </SelectItem>
                     ))}

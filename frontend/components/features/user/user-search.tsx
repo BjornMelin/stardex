@@ -95,10 +95,14 @@ export function UserSearch() {
     <div className="w-full max-w-2xl mx-auto space-y-4">
       <div className="flex flex-wrap gap-2 min-h-[2.5rem]">
         {selectedUsers.map((user) => (
-          <Badge key={user} variant="secondary" className="h-8 text-base gap-2">
+          <Badge
+            key={user}
+            variant="secondary"
+            className="min-h-11 gap-2 text-base sm:h-8 sm:min-h-0"
+          >
             {user}
             <button
-              className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="ml-1 inline-flex h-11 w-11 items-center justify-center rounded-full ring-offset-background outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 sm:h-7 sm:w-7"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   removeUser(user);
@@ -123,7 +127,7 @@ export function UserSearch() {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between"
+              className="min-h-11 w-full justify-between sm:min-h-0"
             >
               <Search className="mr-2 h-4 w-4" />
               Search GitHub users...
@@ -136,7 +140,7 @@ export function UserSearch() {
                 value={inputValue}
                 onValueChange={handleSearch}
                 onKeyDown={handleKeyDown}
-                className="h-9"
+                className="h-11 sm:h-9"
               />
               <CommandList>
                 <CommandEmpty>No users found.</CommandEmpty>
@@ -147,7 +151,12 @@ export function UserSearch() {
                     </CommandItem>
                   ) : (
                     users?.map((user) => (
-                      <CommandItem key={user.id} value={user.login} onSelect={handleSelect}>
+                      <CommandItem
+                        key={user.id}
+                        value={user.login}
+                        onSelect={handleSelect}
+                        className="min-h-11 sm:min-h-0"
+                      >
                         <Image
                           src={user.avatar_url}
                           alt={user.login}
@@ -171,7 +180,7 @@ export function UserSearch() {
               onClick={() => {
                 setShouldFetchRepos(true);
               }}
-              className="shrink-0"
+              className="min-h-11 shrink-0 sm:min-h-0"
             >
               Search
             </Button>
@@ -182,7 +191,7 @@ export function UserSearch() {
                 setShouldFetchRepos(false);
                 clearUsers();
               }}
-              className="shrink-0"
+              className="h-11 w-11 shrink-0 sm:h-10 sm:w-10"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Clear all</span>
