@@ -13,6 +13,9 @@ describe("ClusterSettings", () => {
       <ClusterSettings settings={settings} onSettingsChange={committed} />
     );
     const { rerender } = render(renderSettings(DEFAULT_CLUSTERING_PARAMS));
+
+    expect(screen.getByRole("button", { name: "Clustering help" })).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
 
     const slider = screen.getByRole("slider", { name: "K-Means Clusters" });

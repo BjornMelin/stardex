@@ -38,7 +38,13 @@ export function ClusterSettings({
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Help">
+                <Button
+                  aria-label="Clustering help"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  title="Clustering help"
+                >
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
