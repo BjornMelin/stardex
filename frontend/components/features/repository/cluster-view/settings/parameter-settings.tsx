@@ -10,6 +10,7 @@ interface ParameterSettingsProps {
   onSettingsChange: (settings: ClusterParameterSettings) => void;
 }
 
+/** Renders clustering controls and reconciles local values when external settings change. */
 export function ParameterSettings({ settings, onSettingsChange }: ParameterSettingsProps) {
   const [previousSettings, setPreviousSettings] = useState(settings);
   const [localSettings, setLocalSettings] = useState(settings);
