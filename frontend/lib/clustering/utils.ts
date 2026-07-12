@@ -102,14 +102,6 @@ export function filterClusters(
   });
 }
 
-export function getClusterSimilarity(cluster1: ClusterData, cluster2: ClusterData): number {
-  const langs1 = new Set(cluster1.repositories.map((r) => r.language).filter(isNonEmptyString));
-  const langs2 = new Set(cluster2.repositories.map((r) => r.language).filter(isNonEmptyString));
-  const langs1Array = Array.from(langs1);
-  const commonLangs = new Set(langs1Array.filter((x) => langs2.has(x)));
-  return commonLangs.size / Math.max(langs1.size, langs2.size, 1);
-}
-
 export function extractUniqueMeta(repositories: GitHubRepo[]): {
   languages: string[];
   topics: string[];

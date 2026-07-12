@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CLUSTERING_HELP_TEXT } from "@/lib/constants/clustering";
-import { ClusterSettingsProps } from "@/lib/types/clustering";
+import type { ClusterSettingsProps } from "@/lib/types/clustering";
 import { FilterPanel } from "./settings/filter-panel";
 import { HelpContent } from "./settings/help-content";
 import { ParameterSettings } from "./settings/parameter-settings";
@@ -13,6 +13,8 @@ import { ParameterSettings } from "./settings/parameter-settings";
 export function ClusterSettings({
   settings,
   onSettingsChange,
+  repositoryCount,
+  availableAlgorithms,
   filters = {},
   onFiltersChange,
   availableLanguages = [],
@@ -63,11 +65,16 @@ export function ClusterSettings({
 
       <div className="overflow-y-auto flex-1">
         {showingSettings ? (
-          <ParameterSettings settings={settings} onSettingsChange={onSettingsChange} />
+          <ParameterSettings
+            settings={settings}
+            onSettingsChange={onSettingsChange}
+            repositoryCount={repositoryCount}
+            availableAlgorithms={availableAlgorithms}
+          />
         ) : (
           <FilterPanel
             filters={filters}
-            onFiltersChange={onFiltersChange || (() => {})}
+            onFiltersChange={onFiltersChange}
             availableLanguages={availableLanguages}
             availableTopics={availableTopics}
           />

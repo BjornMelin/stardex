@@ -20,6 +20,7 @@ from app.models import ClusteringRequest, ClusteringResponse, ClusterResult, Git
 
 
 logger = logging.getLogger(__name__)
+DENSE_CLUSTERING_MAX_REPOSITORIES = 250
 
 load_dotenv()
 
@@ -55,7 +56,7 @@ async def request_validation_error_handler(
     """Return request validation errors using the ClusteringResponse shape."""
     payload = ClusteringResponse(
         status="error", error_message=str(exc), total_processing_time_ms=0
-    ).model_dump()
+    ).model_dump(exclude_none=True)
     return JSONResponse(status_code=422, content=payload)
 
 
@@ -64,69 +65,67 @@ def extract_repo_descriptions(repositories: list[GitHubRepo]) -> list[str]:
     return [(repo.description or "").strip() or repo.name for repo in repositories]
 
 
-@app.post("/clustering")
+@app.post("/clustering", response_model_exclude_none=True)
 def perform_all_clustering(
     request: ClusteringRequest, http_response: Response
 ) -> ClusteringResponse:
     """Perform all clustering algorithms on the provided repository data.
 
-    This endpoint runs:
-    1. K-means clustering
-    2. Hierarchical clustering
-    3. PCA + Hierarchical clustering
-
-    Each algorithm runs independently and their results are combined in the response.
+    K-means runs for every non-empty repository set. Hierarchical algorithms run
+    for sets of 2 through 250 repositories.
     """
     start_time = time.perf_counter()
     descriptions = extract_repo_descriptions(request.repositories)
+    repository_count = len(descriptions)
 
     result = ClusteringResponse(status="success", total_processing_time_ms=0)
 
     try:
         # Perform K-means clustering
         kmeans_start = time.perf_counter()
-        kmeans_clusters = perform_kmeans(descriptions, request.kmeans_clusters)
+        kmeans_clusters, effective_kmeans_clusters = perform_kmeans(
+            descriptions, request.kmeans_clusters
+        )
         kmeans_time = (time.perf_counter() - kmeans_start) * 1000
 
         result.kmeans_clusters = ClusterResult(
             algorithm="kmeans",
             clusters=kmeans_clusters,
-            parameters={"num_clusters": request.kmeans_clusters},
+            parameters={"num_clusters": effective_kmeans_clusters},
             processing_time_ms=kmeans_time,
         )
 
-        # Perform hierarchical clustering
-        hierarchical_start = time.perf_counter()
-        hierarchical_clusters = perform_hierarchical(
-            descriptions, distance_threshold=request.hierarchical_threshold
-        )
-        hierarchical_time = (time.perf_counter() - hierarchical_start) * 1000
+        if 2 <= repository_count <= DENSE_CLUSTERING_MAX_REPOSITORIES:
+            hierarchical_start = time.perf_counter()
+            hierarchical_clusters = perform_hierarchical(
+                descriptions, distance_threshold=request.hierarchical_threshold
+            )
+            hierarchical_time = (time.perf_counter() - hierarchical_start) * 1000
 
-        result.hierarchical_clusters = ClusterResult(
-            algorithm="hierarchical",
-            clusters=hierarchical_clusters,
-            parameters={"distance_threshold": request.hierarchical_threshold},
-            processing_time_ms=hierarchical_time,
-        )
+            result.hierarchical_clusters = ClusterResult(
+                algorithm="hierarchical",
+                clusters=hierarchical_clusters,
+                parameters={"distance_threshold": request.hierarchical_threshold},
+                processing_time_ms=hierarchical_time,
+            )
 
-        # Perform PCA + hierarchical clustering
-        pca_start = time.perf_counter()
-        pca_clusters = perform_pca_hierarchical(
-            descriptions,
-            n_components=request.pca_components,
-            distance_threshold=request.hierarchical_threshold,
-        )
-        pca_time = (time.perf_counter() - pca_start) * 1000
+            pca_start = time.perf_counter()
+            pca_clusters, effective_pca_components = perform_pca_hierarchical(
+                descriptions,
+                n_components=request.pca_components,
+                distance_threshold=request.hierarchical_threshold,
+            )
+            pca_time = (time.perf_counter() - pca_start) * 1000
 
-        result.pca_hierarchical_clusters = ClusterResult(
-            algorithm="pca_hierarchical",
-            clusters=pca_clusters,
-            parameters={
-                "n_components": request.pca_components,
-                "distance_threshold": request.hierarchical_threshold,
-            },
-            processing_time_ms=pca_time,
-        )
+            result.pca_hierarchical_clusters = ClusterResult(
+                algorithm="pca_hierarchical",
+                clusters=pca_clusters,
+                parameters={
+                    "n_components": effective_pca_components,
+                    "distance_threshold": request.hierarchical_threshold,
+                },
+                processing_time_ms=pca_time,
+            )
 
         # Calculate total processing time
         result.total_processing_time_ms = (time.perf_counter() - start_time) * 1000

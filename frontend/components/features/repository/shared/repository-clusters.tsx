@@ -5,8 +5,14 @@ import { useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { clusterRepositories } from "@/lib/clustering-api";
-import { GitHubRepo } from "@/lib/github";
-import { ClusterFilters, ClusterParameterSettings } from "@/lib/types/clustering";
+import type { ClusteringAlgorithm } from "@/lib/constants/clustering";
+import {
+  CLUSTERING_ALGORITHMS,
+  clampClusteringParams,
+  DEFAULT_CLUSTERING_PARAMS,
+} from "@/lib/constants/clustering";
+import type { GitHubRepo } from "@/lib/github";
+import type { ClusterFilters, ClusterParameterSettings } from "@/lib/types/clustering";
 import { ClusterView } from "../cluster-view/cluster-view";
 import { RepositoryLoading } from "../list-view/repository-loading";
 
@@ -15,53 +21,52 @@ interface RepositoryClustersProps {
 }
 
 export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
-  const [clusterParams, setClusterParams] = useState<ClusterParameterSettings>({
-    kmeans_clusters: 5,
-    hierarchical_threshold: 1.5,
-    pca_components: 10,
-  });
+  const [clusterParams, setClusterParams] =
+    useState<ClusterParameterSettings>(DEFAULT_CLUSTERING_PARAMS);
 
   const [filters, setFilters] = useState<ClusterFilters>({});
+  const [preferredAlgorithm, setPreferredAlgorithm] = useState<ClusteringAlgorithm>("kmeans");
 
-  const repoKey = useMemo(() => repositories.map((r) => r.id).join(","), [repositories]);
+  const clusteringInputKey = useMemo(
+    () =>
+      repositories.map(({ id, name, description }) => ({
+        id,
+        name,
+        description,
+      })),
+    [repositories]
+  );
+  const requestParams = useMemo(
+    () => clampClusteringParams(clusterParams, repositories.length),
+    [clusterParams, repositories.length]
+  );
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [
-      "clusterResults",
-      repoKey,
-      clusterParams.kmeans_clusters,
-      clusterParams.hierarchical_threshold,
-      clusterParams.pca_components,
-    ],
-    queryFn: async () => {
-      const response = await clusterRepositories({
+    queryKey: ["clusterResults", clusteringInputKey, requestParams],
+    queryFn: () =>
+      clusterRepositories({
         repositories,
-        ...clusterParams,
-      });
-      return {
-        kmeans: response.kmeans_clusters,
-        hierarchical: response.hierarchical_clusters,
-        pca_hierarchical: response.pca_hierarchical_clusters,
-      };
-    },
+        ...requestParams,
+      }),
     enabled: repositories.length > 0,
   });
 
-  const results = {
-    kmeans: data?.kmeans,
-    hierarchical: data?.hierarchical,
-    pca_hierarchical: data?.pca_hierarchical,
-  };
+  const algorithmResults = [
+    ["kmeans", data?.kmeans_clusters],
+    ["hierarchical", data?.hierarchical_clusters],
+    ["pca_hierarchical", data?.pca_hierarchical_clusters],
+  ] as const;
+  const availableAlgorithms = algorithmResults
+    .filter(([, result]) => result !== undefined)
+    .map(([algorithm]) => algorithm);
+  const activeAlgorithm = availableAlgorithms.includes(preferredAlgorithm)
+    ? preferredAlgorithm
+    : availableAlgorithms[0];
 
-  const [activeTab, setActiveTab] = useState<string>(
-    results.kmeans
-      ? "kmeans"
-      : results.hierarchical
-        ? "hierarchical"
-        : results.pca_hierarchical
-          ? "pca_hierarchical"
-          : "kmeans"
-  );
+  const handleTabChange = (value: string) => {
+    const algorithm = availableAlgorithms.find((candidate) => candidate === value);
+    if (algorithm) setPreferredAlgorithm(algorithm);
+  };
 
   if (isLoading) {
     return <RepositoryLoading />;
@@ -77,7 +82,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     );
   }
 
-  if (!data || Object.values(results).every((r) => !r)) {
+  if (!data || !activeAlgorithm) {
     return (
       <Alert>
         <AlertDescription>
@@ -88,52 +93,31 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <Tabs value={activeAlgorithm} onValueChange={handleTabChange}>
       <TabsList className="mb-4">
-        {results.kmeans && <TabsTrigger value="kmeans">K-Means</TabsTrigger>}
-        {results.hierarchical && <TabsTrigger value="hierarchical">Hierarchical</TabsTrigger>}
-        {results.pca_hierarchical && (
-          <TabsTrigger value="pca_hierarchical">PCA + Hierarchical</TabsTrigger>
+        {algorithmResults.map(([algorithm, result]) =>
+          result ? (
+            <TabsTrigger key={algorithm} value={algorithm}>
+              {CLUSTERING_ALGORITHMS[algorithm].name}
+            </TabsTrigger>
+          ) : null
         )}
       </TabsList>
-      {results.kmeans && (
-        <TabsContent value="kmeans">
-          <ClusterView
-            result={results.kmeans}
-            repositories={repositories}
-            algorithm="kmeans"
-            onSettingsChange={setClusterParams}
-            currentSettings={clusterParams}
-            onFiltersChange={setFilters}
-            currentFilters={filters}
-          />
-        </TabsContent>
-      )}
-      {results.hierarchical && (
-        <TabsContent value="hierarchical">
-          <ClusterView
-            result={results.hierarchical}
-            repositories={repositories}
-            algorithm="hierarchical"
-            onSettingsChange={setClusterParams}
-            currentSettings={clusterParams}
-            onFiltersChange={setFilters}
-            currentFilters={filters}
-          />
-        </TabsContent>
-      )}
-      {results.pca_hierarchical && (
-        <TabsContent value="pca_hierarchical">
-          <ClusterView
-            result={results.pca_hierarchical}
-            repositories={repositories}
-            algorithm="pca_hierarchical"
-            onSettingsChange={setClusterParams}
-            currentSettings={clusterParams}
-            onFiltersChange={setFilters}
-            currentFilters={filters}
-          />
-        </TabsContent>
+      {algorithmResults.map(([algorithm, result]) =>
+        result ? (
+          <TabsContent key={algorithm} value={algorithm}>
+            <ClusterView
+              result={result}
+              repositories={repositories}
+              algorithm={algorithm}
+              availableAlgorithms={availableAlgorithms}
+              onSettingsChange={setClusterParams}
+              currentSettings={requestParams}
+              onFiltersChange={setFilters}
+              currentFilters={filters}
+            />
+          </TabsContent>
+        ) : null
       )}
     </Tabs>
   );
