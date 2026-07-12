@@ -14,6 +14,12 @@ interface RepositoryCardProps {
   viewMode: "grid" | "list";
 }
 
+/**
+ * Displays repository metadata and contribution links for one repository.
+ *
+ * @param props - The repository and selected presentation mode.
+ * @returns A repository summary card.
+ */
 export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
   return (
     <Card className={cn("p-4 hover:bg-muted/50 transition-colors", viewMode === "list" && "p-3")}>
@@ -31,7 +37,7 @@ export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
                     href={repo.html_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center gap-2 hover:underline sm:min-h-0"
+                    className="inline-flex min-h-11 items-center gap-2 hover:underline sm:min-h-6"
                   >
                     {repo.full_name}
                     <ExternalLink className="h-3 w-3" />

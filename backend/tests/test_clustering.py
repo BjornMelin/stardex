@@ -1,3 +1,5 @@
+"""Clustering contract and scale-boundary tests."""
+
 from collections.abc import Iterator
 
 import pytest

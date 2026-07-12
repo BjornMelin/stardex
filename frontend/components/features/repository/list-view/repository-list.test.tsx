@@ -37,7 +37,7 @@ beforeEach(() => {
   useGitHubStore.setState(useGitHubStore.getInitialState(), true);
   const state = useGitHubStore.getState();
   state.addUser("example");
-  state.setRepos("example", [repository]);
+  state.setRepos({ example: [repository] });
   state.setShouldFetchRepos(true);
 });
 

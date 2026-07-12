@@ -33,8 +33,7 @@ describe("GitHub store repository ownership", () => {
 
     state.addUser("alice");
     state.addUser("bob");
-    state.setRepos("alice", [shared]);
-    state.setRepos("bob", [{ ...shared }, unique]);
+    state.setRepos({ alice: [shared], bob: [{ ...shared }, unique] });
 
     expect(useGitHubStore.getState().getSelectedRepos()).toEqual([shared, unique]);
     expect(useGitHubStore.getState().getFilteredAndSortedRepos()).toEqual([unique, shared]);
@@ -47,8 +46,7 @@ describe("GitHub store repository ownership", () => {
 
     state.addUser("alice");
     state.addUser("bob");
-    state.setRepos("alice", [aliceRepository]);
-    state.setRepos("bob", [bobRepository]);
+    state.setRepos({ alice: [aliceRepository], bob: [bobRepository] });
 
     state.removeUser("bob");
 
@@ -70,7 +68,7 @@ describe("GitHub store repository ownership", () => {
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
 
     useGitHubStore.getState().setCurrentPage(3);
-    useGitHubStore.getState().setRepos("alice", [first, second]);
+    useGitHubStore.getState().setRepos({ alice: [first, second] });
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
 
     useGitHubStore.setState({ pagination: { currentPage: 2, itemsPerPage: 1 } });
@@ -81,6 +79,60 @@ describe("GitHub store repository ownership", () => {
 
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
     expect(useGitHubStore.getState().getCurrentPageRepos()).toEqual([first]);
+  });
+
+  it("reconciles filters when a repository source is replaced", () => {
+    const previous = {
+      ...makeRepository(1_000, "previous"),
+      topics: ["old-topic"],
+    };
+    const replacement = {
+      ...makeRepository(100, "replacement"),
+      language: "Python",
+      topics: ["new-topic"],
+    };
+    const state = useGitHubStore.getState();
+
+    state.addUser("alice");
+    state.setRepos({ alice: [previous] });
+    state.setFilters({
+      ...state.filters,
+      language: "TypeScript",
+      minStars: 500,
+      topics: ["old-topic"],
+    });
+
+    useGitHubStore.getState().setRepos({ alice: [replacement] });
+
+    expect(useGitHubStore.getState().filters).toMatchObject({
+      language: null,
+      minStars: 100,
+      topics: [],
+    });
+    expect(useGitHubStore.getState().getFilteredAndSortedRepos()).toEqual([replacement]);
+  });
+
+  it("preserves filters supported by the complete multi-user refresh", () => {
+    const previousPython = { ...makeRepository(1, "alice-python"), language: "Python" };
+    const replacementJavaScript = {
+      ...makeRepository(2, "alice-javascript"),
+      language: "JavaScript",
+    };
+    const replacementPython = { ...makeRepository(3, "bob-python"), language: "Python" };
+    const state = useGitHubStore.getState();
+
+    state.addUser("alice");
+    state.addUser("bob");
+    state.setRepos({ alice: [previousPython], bob: [] });
+    state.setFilters({ ...state.filters, language: "Python" });
+
+    useGitHubStore.getState().setRepos({
+      alice: [replacementJavaScript],
+      bob: [replacementPython],
+    });
+
+    expect(useGitHubStore.getState().filters.language).toBe("Python");
+    expect(useGitHubStore.getState().getFilteredAndSortedRepos()).toEqual([replacementPython]);
   });
 
   it("never accepts a page below one", () => {

@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchUsers } from "@/lib/github";
 import { UserSearch } from "./user-search";
 
-const { queryState, routerPush, store } = vi.hoisted(() => ({
+const { queryClient, queryState, store } = vi.hoisted(() => ({
+  queryClient: { invalidateQueries: vi.fn() },
   queryState: { lastKey: undefined as string | undefined },
-  routerPush: vi.fn(),
   store: {
     selectedUsers: [] as string[],
     addUser: vi.fn(),
@@ -13,10 +13,6 @@ const { queryState, routerPush, store } = vi.hoisted(() => ({
     clearUsers: vi.fn(),
     setShouldFetchRepos: vi.fn(),
   },
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock("next/image", () => ({
@@ -36,6 +32,7 @@ vi.mock("@/store/github", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => queryClient,
   useQuery: (opts: { queryKey: unknown; queryFn: () => unknown; enabled?: boolean }) => {
     if (opts.enabled) {
       const serialized = JSON.stringify(opts.queryKey);
@@ -110,27 +107,18 @@ describe("UserSearch", () => {
     expect(mockedSearchUsers).toHaveBeenCalledWith("oct");
   });
 
-  it("pressing Enter triggers repository fetching when a user is selected", () => {
-    store.selectedUsers = ["octocat"];
-
-    render(<UserSearch />);
-
-    fireEvent.click(screen.getByRole("combobox"));
-
-    const input = screen.getByPlaceholderText("Search GitHub users...") as HTMLInputElement;
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
-  });
-
-  it("the Search button triggers repository fetching without navigating", () => {
+  it("the Search button invalidates an existing repository query", () => {
     store.selectedUsers = ["octocat"];
 
     render(<UserSearch />);
 
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-    expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
-    expect(routerPush).not.toHaveBeenCalled();
+    expect(store.setShouldFetchRepos).toHaveBeenCalledTimes(2);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(queryClient.invalidateQueries).toHaveBeenLastCalledWith({
+      queryKey: ["starredRepos", ["octocat"]],
+    });
   });
 });

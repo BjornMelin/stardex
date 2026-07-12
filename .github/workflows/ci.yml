@@ -41,7 +41,8 @@ jobs:
         working-directory: .
 
       - name: Check frontend formatting
-        run: pnpm run biome:check
+        run: pnpm run biome
+        working-directory: .
 
       - name: Lint frontend
         run: pnpm run lint

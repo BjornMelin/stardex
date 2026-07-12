@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Separator } from "@/components/ui/separator";
 
+/**
+ * Renders the primary navigation and theme controls.
+ *
+ * @returns The application navigation bar.
+ */
 export function Navbar() {
   const { setTheme } = useTheme();
 
@@ -40,8 +45,8 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9">
-                  <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <Sun aria-hidden="true" className="h-[1.2rem] w-[1.2rem] dark:hidden" />
+                  <Moon aria-hidden="true" className="hidden h-[1.2rem] w-[1.2rem] dark:block" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
               </DropdownMenuTrigger>

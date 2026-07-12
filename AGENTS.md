@@ -21,11 +21,12 @@ Run from repo root:
 - `pnpm test`: run `pytest` (backend) + `vitest run` (frontend).
 - `pnpm typecheck`: run `pyright` (backend) + `tsc --noEmit`.
 - `pnpm lint`: run frontend ESLint.
-- `pnpm biome`: run frontend Biome checks (format/lint).
+- `pnpm biome`: run frontend Biome checks from the root configuration.
+- `pnpm biome:format`: format frontend code with Biome.
 
 ## Coding Style & Naming Conventions
 
-- Frontend: TypeScript/React with Biome formatting (run `pnpm -C frontend biome:format`) and ESLint. Use `PascalCase` for components and `kebab-case` for routes/segments under `frontend/app/` as needed.
+- Frontend: TypeScript/React with Biome formatting (run `pnpm biome:format`) and ESLint. Use `PascalCase` for components and `kebab-case` for routes/segments under `frontend/app/` as needed.
 - Backend: Python 3.11+ with Ruff + Pyright (run `cd backend && uv run ruff format` and `cd backend && uv run ruff check`). Prefer explicit types; keep Pyright clean (`pnpm typecheck:backend`).
 
 ## Testing Guidelines

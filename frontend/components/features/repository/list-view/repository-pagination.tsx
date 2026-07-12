@@ -10,7 +10,12 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-/** Pages through an already filtered repository collection. */
+/**
+ * Pages through an already filtered repository collection.
+ *
+ * @param props - Pagination state and its page-change callback.
+ * @returns Pagination controls for the filtered collection.
+ */
 export function RepositoryPagination({
   currentPage,
   totalItems,

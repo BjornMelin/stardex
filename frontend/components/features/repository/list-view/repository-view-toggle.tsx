@@ -8,6 +8,12 @@ interface ViewToggleProps {
   onViewModeChange: (mode: "grid" | "list") => void;
 }
 
+/**
+ * Switches between grid and list repository layouts.
+ *
+ * @param props - The current layout and its change callback.
+ * @returns The repository layout toggle group.
+ */
 export function RepositoryViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
   return (
     <div className="flex items-center border rounded-md">

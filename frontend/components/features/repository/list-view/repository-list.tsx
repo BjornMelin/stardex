@@ -18,7 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
-/** Displays the filtered repository collection and derives its current page from that list. */
+/**
+ * Displays the filtered repository collection and derives its current page.
+ *
+ * @returns The repository list, loading state, or empty state.
+ */
 export function RepositoryList() {
   const {
     selectedUsers,
@@ -52,9 +56,7 @@ export function RepositoryList() {
 
   useEffect(() => {
     if (data) {
-      data.forEach(({ username, repos }) => {
-        setRepos(username, repos);
-      });
+      setRepos(Object.fromEntries(data.map(({ username, repos }) => [username, repos])));
     }
   }, [data, setRepos]);
 

@@ -26,7 +26,11 @@ import type { FilterCriteria, SortOption } from "@/lib/types/repository-filters"
 import { cn } from "@/lib/utils";
 import { useGitHubStore } from "@/store/github";
 
-/** Renders search, sort, and sheet-based filters for the selected repositories. */
+/**
+ * Renders search, sort, and sheet-based filters for the selected repositories.
+ *
+ * @returns The repository filter controls.
+ */
 export function RepositoryFilters() {
   const [isOpen, setIsOpen] = useState(false);
   const { filters, setFilters, getSelectedRepos } = useGitHubStore();

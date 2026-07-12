@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,7 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 import { githubUsernameSchema, searchUsers } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
+/**
+ * Selects GitHub users whose starred repositories should be loaded.
+ *
+ * @returns The user picker and selected-user controls.
+ */
 export function UserSearch() {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -43,6 +49,11 @@ export function UserSearch() {
     };
   }, []);
 
+  const requestRepositories = useCallback(() => {
+    setShouldFetchRepos(true);
+    void queryClient.invalidateQueries({ queryKey: ["starredRepos", selectedUsers] });
+  }, [queryClient, selectedUsers, setShouldFetchRepos]);
+
   const handleSearch = useCallback((search: string) => {
     setInputValue(search);
 
@@ -59,15 +70,6 @@ export function UserSearch() {
       setSearchValue(search);
     }, 250);
   }, []);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && selectedUsers.length > 0) {
-        setShouldFetchRepos(true);
-      }
-    },
-    [selectedUsers.length, setShouldFetchRepos]
-  );
 
   const handleSelect = useCallback(
     (username: string) => {
@@ -139,8 +141,7 @@ export function UserSearch() {
                 placeholder="Search GitHub users..."
                 value={inputValue}
                 onValueChange={handleSearch}
-                onKeyDown={handleKeyDown}
-                className="h-11 sm:h-9"
+                className="h-11 text-base sm:h-9 sm:text-sm"
               />
               <CommandList>
                 <CommandEmpty>No users found.</CommandEmpty>
@@ -177,9 +178,7 @@ export function UserSearch() {
           <>
             <Button
               variant="default"
-              onClick={() => {
-                setShouldFetchRepos(true);
-              }}
+              onClick={requestRepositories}
               className="min-h-11 shrink-0 sm:min-h-0"
             >
               Search
