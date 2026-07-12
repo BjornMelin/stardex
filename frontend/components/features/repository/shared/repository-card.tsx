@@ -1,11 +1,12 @@
 "use client";
 
 import { format } from "date-fns";
-import { Calendar, Code, ExternalLink, Star } from "lucide-react";
+import { Calendar, CircleDot, Code, ExternalLink, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { GitHubRepo } from "@/lib/github";
+import { type GitHubRepo, getContributionIssuesUrl } from "@/lib/github";
 import { cn } from "@/lib/utils";
 
 interface RepositoryCardProps {
@@ -56,6 +57,24 @@ export function RepositoryCard({ repo, viewMode }: RepositoryCardProps) {
                 <Calendar className="h-3 w-3" />
                 Updated {format(new Date(repo.updated_at), "MMM d, yyyy")}
               </Badge>
+              {repo.open_issues_count > 0 && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-11 gap-1 px-2 text-xs sm:h-7"
+                >
+                  <a
+                    href={getContributionIssuesUrl(repo.full_name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <CircleDot aria-hidden="true" />
+                    Find contribution issues
+                    <ExternalLink aria-hidden="true" />
+                  </a>
+                </Button>
+              )}
               {viewMode === "grid" &&
                 repo.topics.map((topic: string) => (
                   <Badge key={topic} variant="secondary" className="text-xs">

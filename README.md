@@ -30,6 +30,7 @@ Understand your GitHub stars faster: fetch stars from one or more users, filter 
 
 - Search GitHub users and pull their starred repositories (supports multiple users).
 - Explore in a list view with search, language filtering, topic filtering, minimum stars, and sorting.
+- Open repository-scoped, unassigned `good first issue` or `help wanted` searches on GitHub.
 - Cluster repositories by description similarity using K-means, hierarchical clustering, or PCA + hierarchical clustering.
 - Tune clustering parameters from the UI and switch between algorithms.
 - Strong input validation in the backend (clear errors and safe limits).
