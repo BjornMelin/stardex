@@ -25,7 +25,8 @@ export function RepositoryList() {
     shouldFetchRepos,
     pagination: { currentPage, itemsPerPage },
     setCurrentPage,
-    resetPagination,
+    getCurrentPageRepos,
+    getFilteredAndSortedRepos,
   } = useGitHubStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
@@ -58,10 +59,6 @@ export function RepositoryList() {
   }, [data, setRepos]);
 
   useEffect(() => {
-    resetPagination();
-  }, [selectedUsers, resetPagination]);
-
-  useEffect(() => {
     if (error) {
       if (error instanceof RateLimitError) {
         const waitMinutes = Math.ceil((error.resetTime.getTime() - Date.now()) / 60000);
@@ -80,8 +77,8 @@ export function RepositoryList() {
     }
   }, [error, toast]);
 
-  const currentPageRepos = useGitHubStore((state) => state.getCurrentPageRepos());
-  const allRepos = useGitHubStore((state) => state.getFilteredAndSortedRepos());
+  const currentPageRepos = getCurrentPageRepos();
+  const allRepos = getFilteredAndSortedRepos();
 
   if (selectedUsers.length === 0) {
     return <RepositoryEmptyState />;
@@ -103,17 +100,19 @@ export function RepositoryList() {
 
         <TabsContent value="list" className="mt-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <RepositoryFilters />
               </div>
-              <RepositoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              <div className="self-end sm:self-auto">
+                <RepositoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
             </div>
 
             {isLoading ? (
               <RepositoryLoading />
             ) : (
-              <ScrollArea className="h-[600px] rounded-md border">
+              <ScrollArea className="h-auto rounded-md border sm:h-[600px]">
                 <div className="p-4 space-y-4">
                   {currentPageRepos.map((repo: GitHubRepo) => (
                     <RepositoryCard key={repo.id} repo={repo} viewMode={viewMode} />

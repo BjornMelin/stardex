@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { GitHubRepo } from "../lib/github";
+import type { GitHubRepo } from "../lib/github";
 import type { FilterCriteria } from "../lib/types/repository-filters";
 
 interface GitHubStore {
@@ -19,7 +19,7 @@ interface GitHubStore {
     itemsPerPage: number;
   };
   setCurrentPage: (page: number) => void;
-  resetPagination: () => void;
+  getSelectedRepos: () => GitHubRepo[];
   getFilteredAndSortedRepos: () => GitHubRepo[];
   getCurrentPageRepos: () => GitHubRepo[];
 }
@@ -27,16 +27,24 @@ interface GitHubStore {
 export const useGitHubStore = create<GitHubStore>((set, get) => ({
   selectedUsers: [],
   addUser: (username) =>
-    set((state) => ({
-      selectedUsers: state.selectedUsers.includes(username)
-        ? state.selectedUsers
-        : [...state.selectedUsers, username],
-    })),
+    set((state) =>
+      state.selectedUsers.includes(username)
+        ? state
+        : {
+            selectedUsers: [...state.selectedUsers, username],
+            pagination: { ...state.pagination, currentPage: 1 },
+          }
+    ),
   removeUser: (username) =>
     set((state) => ({
       selectedUsers: state.selectedUsers.filter((u) => u !== username),
+      pagination: { ...state.pagination, currentPage: 1 },
     })),
-  clearUsers: () => set({ selectedUsers: [] }),
+  clearUsers: () =>
+    set((state) => ({
+      selectedUsers: [],
+      pagination: { ...state.pagination, currentPage: 1 },
+    })),
   repos: {},
   setRepos: (username, repos) =>
     set((state) => ({
@@ -44,8 +52,13 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
         ...state.repos,
         [username]: repos,
       },
+      pagination: { ...state.pagination, currentPage: 1 },
     })),
-  clearRepos: () => set({ repos: {} }),
+  clearRepos: () =>
+    set((state) => ({
+      repos: {},
+      pagination: { ...state.pagination, currentPage: 1 },
+    })),
   filters: {
     search: "",
     language: null,
@@ -53,7 +66,11 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
     topics: [],
     sortBy: "stars",
   },
-  setFilters: (filters) => set({ filters }),
+  setFilters: (filters) =>
+    set((state) => ({
+      filters,
+      pagination: { ...state.pagination, currentPage: 1 },
+    })),
   shouldFetchRepos: false,
   setShouldFetchRepos: (value) => set({ shouldFetchRepos: value }),
   pagination: {
@@ -62,21 +79,25 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
   },
   setCurrentPage: (page) =>
     set((state) => ({
-      pagination: { ...state.pagination, currentPage: page },
+      pagination: { ...state.pagination, currentPage: Math.max(1, page) },
     })),
-  resetPagination: () =>
-    set((state) => ({
-      pagination: { ...state.pagination, currentPage: 1 },
-    })),
+  getSelectedRepos: () => {
+    const state = get();
+    const repositoriesById = new Map<number, GitHubRepo>();
+
+    for (const username of state.selectedUsers) {
+      for (const repository of state.repos[username] ?? []) {
+        if (!repositoriesById.has(repository.id)) {
+          repositoriesById.set(repository.id, repository);
+        }
+      }
+    }
+
+    return Array.from(repositoriesById.values());
+  },
   getFilteredAndSortedRepos: () => {
     const state = get();
-    let allRepos: GitHubRepo[] = [];
-
-    // Collect all repos
-    state.selectedUsers.forEach((username) => {
-      const userRepos = state.repos[username] || [];
-      allRepos.push(...userRepos);
-    });
+    let allRepos = get().getSelectedRepos();
 
     // Apply filters
     if (state.filters.search) {

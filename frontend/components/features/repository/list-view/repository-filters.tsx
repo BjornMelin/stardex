@@ -2,7 +2,7 @@
 
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,17 +13,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import type { FilterCriteria, SortOption } from "@/lib/types/repository-filters";
+import { cn } from "@/lib/utils";
 import { useGitHubStore } from "@/store/github";
 
 export function RepositoryFilters() {
   const [isOpen, setIsOpen] = useState(false);
-  const { repos, filters, setFilters } = useGitHubStore();
+  const { filters, setFilters, getSelectedRepos } = useGitHubStore();
 
-  // Get unique languages and topics from all repos
-  const allRepos = Object.values(repos).flat();
+  // Keep filter metadata aligned with the currently selected repository sources.
+  const allRepos = getSelectedRepos();
   const languages = Array.from(
     new Set(
       allRepos
@@ -52,12 +60,16 @@ export function RepositoryFilters() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex">
+        <div className="relative col-span-2 min-w-0 flex-1 sm:col-span-1">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+          />
           <Input
+            aria-label="Search repositories"
             placeholder="Search repositories..."
-            className="pl-8"
+            className="pl-8 text-base sm:text-sm"
             value={filters.search}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -66,7 +78,10 @@ export function RepositoryFilters() {
           value={filters.sortBy}
           onValueChange={(value: SortOption) => handleFilterChange("sortBy", value)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger
+            aria-label="Sort repositories"
+            className="w-full min-w-0 text-base sm:w-[180px] sm:text-sm"
+          >
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -84,6 +99,9 @@ export function RepositoryFilters() {
           <SheetContent>
             <SheetHeader>
               <SheetTitle>Filter Repositories</SheetTitle>
+              <SheetDescription>
+                Limit the selected repositories by language, stars, or topics.
+              </SheetDescription>
             </SheetHeader>
             <div className="space-y-6 mt-4">
               <div className="space-y-2">
@@ -94,7 +112,7 @@ export function RepositoryFilters() {
                     handleFilterChange("language", value === "_all" ? null : value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Language">
                     <SelectValue placeholder="All Languages" />
                   </SelectTrigger>
                   <SelectContent>
@@ -126,10 +144,16 @@ export function RepositoryFilters() {
                 <Label>Topics</Label>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {allTopics.map((topic) => (
-                    <Badge
+                    <button
                       key={topic}
-                      variant={filters.topics.includes(topic) ? "default" : "outline"}
-                      className="cursor-pointer"
+                      type="button"
+                      aria-pressed={filters.topics.includes(topic)}
+                      className={cn(
+                        badgeVariants({
+                          variant: filters.topics.includes(topic) ? "default" : "outline",
+                        }),
+                        "min-h-11 sm:min-h-7"
+                      )}
                       onClick={() => {
                         const newTopics = filters.topics.includes(topic)
                           ? filters.topics.filter((t) => t !== topic)
@@ -138,7 +162,7 @@ export function RepositoryFilters() {
                       }}
                     >
                       {topic}
-                    </Badge>
+                    </button>
                   ))}
                 </div>
               </div>

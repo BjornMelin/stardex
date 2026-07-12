@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { githubUsernameSchema, searchUsers } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
 export function UserSearch() {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -66,10 +64,9 @@ export function UserSearch() {
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && selectedUsers.length > 0) {
         setShouldFetchRepos(true);
-        router.push("/");
       }
     },
-    [router, selectedUsers.length, setShouldFetchRepos]
+    [selectedUsers.length, setShouldFetchRepos]
   );
 
   const handleSelect = useCallback(
@@ -173,7 +170,6 @@ export function UserSearch() {
               variant="default"
               onClick={() => {
                 setShouldFetchRepos(true);
-                router.push("/");
               }}
               className="shrink-0"
             >

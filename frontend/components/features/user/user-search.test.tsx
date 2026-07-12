@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchUsers } from "@/lib/github";
 import { UserSearch } from "./user-search";
 
-const { mockRouterPush, queryState, store } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
+const { queryState, store } = vi.hoisted(() => ({
   queryState: { lastKey: undefined as string | undefined },
   store: {
     selectedUsers: [] as string[],
@@ -13,10 +12,6 @@ const { mockRouterPush, queryState, store } = vi.hoisted(() => ({
     clearUsers: vi.fn(),
     setShouldFetchRepos: vi.fn(),
   },
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockRouterPush }),
 }));
 
 vi.mock("next/image", () => ({
@@ -110,7 +105,7 @@ describe("UserSearch", () => {
     expect(mockedSearchUsers).toHaveBeenCalledWith("oct");
   });
 
-  it("pressing Enter triggers fetch + navigation when at least one user is selected", () => {
+  it("pressing Enter triggers repository fetching when a user is selected", () => {
     store.selectedUsers = ["octocat"];
 
     render(<UserSearch />);
@@ -121,6 +116,15 @@ describe("UserSearch", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
-    expect(mockRouterPush).toHaveBeenCalledWith("/");
+  });
+
+  it("the Search button triggers repository fetching without navigating", () => {
+    store.selectedUsers = ["octocat"];
+
+    render(<UserSearch />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
   });
 });

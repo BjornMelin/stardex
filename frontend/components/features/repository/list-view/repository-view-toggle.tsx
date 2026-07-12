@@ -14,6 +14,7 @@ export function RepositoryViewToggle({ viewMode, onViewModeChange }: ViewToggleP
       <Button
         variant={viewMode === "grid" ? "secondary" : "ghost"}
         size="icon"
+        aria-pressed={viewMode === "grid"}
         onClick={() => onViewModeChange("grid")}
         className="rounded-r-none"
       >
@@ -23,6 +24,7 @@ export function RepositoryViewToggle({ viewMode, onViewModeChange }: ViewToggleP
       <Button
         variant={viewMode === "list" ? "secondary" : "ghost"}
         size="icon"
+        aria-pressed={viewMode === "list"}
         onClick={() => onViewModeChange("list")}
         className="rounded-l-none"
       >

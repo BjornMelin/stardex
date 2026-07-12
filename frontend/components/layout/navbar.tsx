@@ -25,16 +25,18 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 py-3">
-        <nav className="flex items-center gap-6">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center space-x-2">
+        <nav className="flex items-center gap-3 sm:gap-6">
+          <div className="flex min-w-0 items-center gap-6">
+            <Link href="/" className="flex shrink-0 items-center space-x-2">
               <span className="text-2xl font-bold">Stardex</span>
             </Link>
-            <Separator orientation="vertical" className="h-6" />
-            <p className="text-base font-medium">Explore GitHub Stars Intelligently</p>
+            <Separator orientation="vertical" className="hidden h-6 md:block" />
+            <p className="hidden truncate text-base font-medium md:block">
+              Explore GitHub Stars Intelligently
+            </p>
           </div>
 
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -64,6 +66,7 @@ export function Navbar() {
                 <NavigationMenuItem>
                   <NavigationMenuTrigger>
                     <Menu className="h-4 w-4" />
+                    <span className="sr-only">Open navigation menu</span>
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <div className="grid gap-3 p-4 w-[200px]">
