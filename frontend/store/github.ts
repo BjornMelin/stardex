@@ -8,7 +8,7 @@ interface GitHubStore {
   removeUser: (username: string) => void;
   clearUsers: () => void;
   repos: Record<string, GitHubRepo[]>;
-  setRepos: (repos: Record<string, GitHubRepo[]>) => void;
+  setRepos: (refreshedRepos: Record<string, GitHubRepo[]>) => void;
   clearRepos: () => void;
   filters: FilterCriteria;
   setFilters: (filters: FilterCriteria) => void;
@@ -89,11 +89,15 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
       pagination: { ...state.pagination, currentPage: 1 },
     })),
   repos: {},
-  setRepos: (repos) =>
+  setRepos: (refreshedRepos) =>
     set((state) => {
+      const mergedRepos = { ...state.repos, ...refreshedRepos };
       return {
-        repos,
-        filters: reconcileFilters(state.filters, selectRepositories(state.selectedUsers, repos)),
+        repos: mergedRepos,
+        filters: reconcileFilters(
+          state.filters,
+          selectRepositories(state.selectedUsers, mergedRepos)
+        ),
         pagination: { ...state.pagination, currentPage: 1 },
       };
     }),

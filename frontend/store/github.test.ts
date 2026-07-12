@@ -58,6 +58,30 @@ describe("GitHub store repository ownership", () => {
     expect(useGitHubStore.getState().getSelectedRepos()).toEqual([]);
   });
 
+  it("preserves removed-user cache through a selected-user refresh", () => {
+    const previousAliceRepository = makeRepository(1, "previous-alice");
+    const refreshedAliceRepository = makeRepository(2, "refreshed-alice");
+    const bobRepository = makeRepository(3, "bob-repository");
+    const state = useGitHubStore.getState();
+
+    state.addUser("alice");
+    state.addUser("bob");
+    state.setRepos({ alice: [previousAliceRepository], bob: [bobRepository] });
+    state.removeUser("bob");
+
+    useGitHubStore.getState().setRepos({ alice: [refreshedAliceRepository] });
+    useGitHubStore.getState().addUser("bob");
+
+    expect(useGitHubStore.getState().repos).toEqual({
+      alice: [refreshedAliceRepository],
+      bob: [bobRepository],
+    });
+    expect(useGitHubStore.getState().getSelectedRepos()).toEqual([
+      refreshedAliceRepository,
+      bobRepository,
+    ]);
+  });
+
   it("resets pagination when repository sources or filters change", () => {
     const first = makeRepository(1, "first");
     const second = makeRepository(2, "second");
