@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { CLUSTERING_CONFIG, CLUSTERING_HELP_TEXT } from "@/lib/constants/clustering";
 import { ClusterParameterSettings } from "@/lib/types/clustering";
@@ -11,11 +11,13 @@ interface ParameterSettingsProps {
 }
 
 export function ParameterSettings({ settings, onSettingsChange }: ParameterSettingsProps) {
+  const [previousSettings, setPreviousSettings] = useState(settings);
   const [localSettings, setLocalSettings] = useState(settings);
 
-  useEffect(() => {
+  if (settings !== previousSettings) {
+    setPreviousSettings(settings);
     setLocalSettings(settings);
-  }, [settings]);
+  }
 
   const handleSettingChange = useCallback(
     (key: keyof ClusterParameterSettings, value: number) => {
@@ -38,6 +40,7 @@ export function ParameterSettings({ settings, onSettingsChange }: ParameterSetti
           </span>
         </div>
         <Slider
+          aria-label={CLUSTERING_HELP_TEXT.settings.kmeans.title}
           value={[localSettings.kmeans_clusters]}
           min={CLUSTERING_CONFIG.kmeans.min}
           max={CLUSTERING_CONFIG.kmeans.max}
@@ -59,6 +62,7 @@ export function ParameterSettings({ settings, onSettingsChange }: ParameterSetti
           </span>
         </div>
         <Slider
+          aria-label={CLUSTERING_HELP_TEXT.settings.hierarchical.title}
           value={[localSettings.hierarchical_threshold]}
           min={CLUSTERING_CONFIG.hierarchical.min}
           max={CLUSTERING_CONFIG.hierarchical.max}
@@ -81,6 +85,7 @@ export function ParameterSettings({ settings, onSettingsChange }: ParameterSetti
           </span>
         </div>
         <Slider
+          aria-label={CLUSTERING_HELP_TEXT.settings.pca.title}
           value={[localSettings.pca_components]}
           min={CLUSTERING_CONFIG.pca.min}
           max={CLUSTERING_CONFIG.pca.max}

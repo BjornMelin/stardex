@@ -111,6 +111,7 @@ export function RepositoryFilters() {
                 <Label>Minimum Stars</Label>
                 <div className="pt-2">
                   <Slider
+                    aria-label="Minimum Stars"
                     value={[filters.minStars]}
                     onValueChange={([value]) => handleFilterChange("minStars", value)}
                     max={maxStars}
