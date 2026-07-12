@@ -77,7 +77,7 @@ export function RepositoryFilters() {
         </Select>
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon">
+            <Button aria-label="Filter repositories" variant="outline" size="icon">
               <SlidersHorizontal className="h-4 w-4" />
             </Button>
           </SheetTrigger>
@@ -111,6 +111,7 @@ export function RepositoryFilters() {
                 <Label>Minimum Stars</Label>
                 <div className="pt-2">
                   <Slider
+                    aria-label="Minimum Stars"
                     value={[filters.minStars]}
                     onValueChange={([value]) => handleFilterChange("minStars", value)}
                     max={maxStars}
