@@ -23,7 +23,7 @@ export function RepositoryPagination({
   isLoading,
   onPageChange,
 }: PaginationProps) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
   return (
     <div className="sticky bottom-0 flex items-center justify-between gap-2 bg-background/95 backdrop-blur p-4 border-t">

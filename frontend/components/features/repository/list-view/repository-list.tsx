@@ -35,7 +35,7 @@ export function RepositoryList() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetchedAfterMount, isRefetchError } = useQuery({
     queryKey: ["starredRepos", selectedUsers],
     queryFn: async () => {
       const results = await Promise.all(
@@ -55,10 +55,10 @@ export function RepositoryList() {
   });
 
   useEffect(() => {
-    if (data) {
+    if (data && isFetchedAfterMount && !isRefetchError) {
       setRepos(Object.fromEntries(data.map(({ username, repos }) => [username, repos])));
     }
-  }, [data, setRepos]);
+  }, [data, isFetchedAfterMount, isRefetchError, setRepos]);
 
   useEffect(() => {
     if (error) {
@@ -81,14 +81,15 @@ export function RepositoryList() {
 
   const allRepos = getFilteredAndSortedRepos();
   const lastPage = Math.max(1, Math.ceil(allRepos.length / itemsPerPage));
-  const pageStart = (currentPage - 1) * itemsPerPage;
+  const effectivePage = Math.min(currentPage, lastPage);
+  const pageStart = (effectivePage - 1) * itemsPerPage;
   const currentPageRepos = allRepos.slice(pageStart, pageStart + itemsPerPage);
 
   useEffect(() => {
-    if (currentPage > lastPage) {
-      setCurrentPage(lastPage);
+    if (currentPage !== effectivePage) {
+      setCurrentPage(effectivePage);
     }
-  }, [currentPage, lastPage, setCurrentPage]);
+  }, [currentPage, effectivePage, setCurrentPage]);
 
   if (selectedUsers.length === 0) {
     return <RepositoryEmptyState />;
@@ -129,7 +130,7 @@ export function RepositoryList() {
                   ))}
                 </div>
                 <RepositoryPagination
-                  currentPage={currentPage}
+                  currentPage={effectivePage}
                   totalItems={allRepos.length}
                   itemsPerPage={itemsPerPage}
                   isLoading={isLoading}

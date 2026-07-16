@@ -1,11 +1,21 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitHubRepo } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 import { RepositoryList } from "./repository-list";
 
+const queryResult = vi.hoisted(() => ({
+  current: {
+    data: undefined as unknown,
+    isLoading: false,
+    error: null as unknown,
+    isFetchedAfterMount: false,
+    isRefetchError: false,
+  },
+}));
+
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: undefined, isLoading: false, error: null }),
+  useQuery: () => queryResult.current,
 }));
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -34,6 +44,13 @@ const repository: GitHubRepo = {
 };
 
 beforeEach(() => {
+  queryResult.current = {
+    data: undefined,
+    isLoading: false,
+    error: null,
+    isFetchedAfterMount: false,
+    isRefetchError: false,
+  };
   useGitHubStore.setState(useGitHubStore.getInitialState(), true);
   const state = useGitHubStore.getState();
   state.addUser("example");
@@ -69,7 +86,7 @@ describe("RepositoryList", () => {
     );
   });
 
-  it("preserves valid pages across refreshes and clamps pages after shrinkage", async () => {
+  it("preserves valid pages and renders a clamped page during shrinkage", () => {
     const repositories = Array.from({ length: 31 }, (_, index) => ({
       ...repository,
       id: index + 1,
@@ -95,8 +112,62 @@ describe("RepositoryList", () => {
     act(() => {
       useGitHubStore.getState().setRepos({ example: [repository] });
     });
-    await waitFor(() => {
-      expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
-    });
+
+    expect(screen.getByRole("link", { name: "example/repository" })).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
+    expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
+  });
+
+  it("applies only repository data fetched successfully after mount", () => {
+    const cachedRepository = {
+      ...repository,
+      id: 2,
+      name: "cached",
+      full_name: "example/cached",
+    };
+    const currentRepository = {
+      ...repository,
+      id: 3,
+      name: "current",
+      full_name: "example/current",
+    };
+    const refreshedRepository = {
+      ...repository,
+      id: 4,
+      name: "refreshed",
+      full_name: "example/refreshed",
+    };
+    useGitHubStore.getState().setRepos({ example: [currentRepository] });
+    queryResult.current = {
+      data: [{ username: "example", repos: [cachedRepository] }],
+      isLoading: false,
+      error: null,
+      isFetchedAfterMount: false,
+      isRefetchError: false,
+    };
+
+    const { rerender } = render(<RepositoryList />);
+    expect(useGitHubStore.getState().repos.example).toEqual([currentRepository]);
+
+    queryResult.current = {
+      data: [{ username: "example", repos: [cachedRepository] }],
+      isLoading: false,
+      error: new Error("refresh failed"),
+      isFetchedAfterMount: true,
+      isRefetchError: true,
+    };
+    rerender(<RepositoryList />);
+    expect(useGitHubStore.getState().repos.example).toEqual([currentRepository]);
+
+    queryResult.current = {
+      data: [{ username: "example", repos: [refreshedRepository] }],
+      isLoading: false,
+      error: null,
+      isFetchedAfterMount: true,
+      isRefetchError: false,
+    };
+    rerender(<RepositoryList />);
+
+    expect(useGitHubStore.getState().repos.example).toEqual([refreshedRepository]);
   });
 });
