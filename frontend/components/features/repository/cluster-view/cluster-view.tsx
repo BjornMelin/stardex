@@ -12,6 +12,12 @@ import type { ClusterViewProps } from "@/lib/types/clustering";
 import { ClusterCard } from "./cluster-card";
 import { ClusterSettings } from "./cluster-settings";
 
+/**
+ * Renders one clustering result with persistent controls and searchable groups.
+ *
+ * @param props - Result, repositories, settings, and callbacks for the active algorithm.
+ * @returns The interactive cluster result view.
+ */
 export function ClusterView({
   result,
   repositories,
@@ -52,18 +58,16 @@ export function ClusterView({
         {/* Settings Panel */}
         <div className={`relative h-full flex ${isSettingsCollapsed ? "w-0" : ""}`}>
           <div id={settingsPanelId} className="h-full" hidden={isSettingsCollapsed}>
-            {!isSettingsCollapsed && (
-              <ClusterSettings
-                settings={currentSettings}
-                onSettingsChange={onSettingsChange}
-                repositoryCount={repositories.length}
-                availableAlgorithms={availableAlgorithms}
-                filters={currentFilters}
-                onFiltersChange={onFiltersChange}
-                availableLanguages={allLanguages}
-                availableTopics={allTopics}
-              />
-            )}
+            <ClusterSettings
+              settings={currentSettings}
+              onSettingsChange={onSettingsChange}
+              repositoryCount={repositories.length}
+              availableAlgorithms={availableAlgorithms}
+              filters={currentFilters}
+              onFiltersChange={onFiltersChange}
+              availableLanguages={allLanguages}
+              availableTopics={allTopics}
+            />
           </div>
           <Button
             variant="ghost"

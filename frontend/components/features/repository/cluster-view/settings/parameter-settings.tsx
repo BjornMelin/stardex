@@ -17,7 +17,12 @@ interface ParameterSettingsProps {
   availableAlgorithms: readonly ClusteringAlgorithm[];
 }
 
-/** Renders clustering controls and reconciles local values when external settings change. */
+/**
+ * Renders clustering controls and reconciles local values with external settings.
+ *
+ * @param props - Current values, repository bounds, algorithms, and update callback.
+ * @returns Repository-aware clustering parameter controls.
+ */
 export function ParameterSettings({
   settings,
   onSettingsChange,

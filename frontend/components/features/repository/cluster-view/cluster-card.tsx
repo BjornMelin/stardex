@@ -14,6 +14,12 @@ interface ClusterCardProps {
   onToggle: () => void;
 }
 
+/**
+ * Renders an expandable cluster summary and its repositories.
+ *
+ * @param props - Cluster data, disclosure state, and toggle callback.
+ * @returns An accessible cluster disclosure card.
+ */
 export function ClusterCard({ cluster, isExpanded, onToggle }: ClusterCardProps) {
   const repositoriesId = useId();
 

@@ -29,6 +29,8 @@ describe("ClusterView", () => {
     const panelId = hideButton.getAttribute("aria-controls") ?? "";
     expect(hideButton).toHaveAttribute("aria-expanded", "true");
     expect(document.getElementById(panelId)).not.toHaveAttribute("hidden");
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
 
     fireEvent.click(hideButton);
 
@@ -36,5 +38,9 @@ describe("ClusterView", () => {
     expect(showButton).toHaveAttribute("aria-controls", panelId);
     expect(showButton).toHaveAttribute("aria-expanded", "false");
     expect(document.getElementById(panelId)).toHaveAttribute("hidden");
+
+    fireEvent.click(showButton);
+
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
   });
 });

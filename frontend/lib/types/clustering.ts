@@ -2,6 +2,7 @@ import type { ClusteringRequest, ClusterResult } from "@/lib/clustering-api";
 import type { ClusteringAlgorithm } from "@/lib/constants/clustering";
 import type { GitHubRepo } from "@/lib/github";
 
+/** Properties required to render an interactive clustering result. */
 export interface ClusterViewProps {
   result: ClusterResult;
   repositories: GitHubRepo[];
@@ -13,6 +14,7 @@ export interface ClusterViewProps {
   onFiltersChange: (filters: ClusterFilters) => void;
 }
 
+/** Repository group and display metadata derived from a clustering result. */
 export interface ClusterData {
   id: number;
   repositories: GitHubRepo[];
@@ -24,6 +26,7 @@ export interface ClusterData {
   };
 }
 
+/** Optional display filters applied to derived cluster groups. */
 export interface ClusterFilters {
   minStars?: number;
   maxStars?: number;
@@ -32,8 +35,10 @@ export interface ClusterFilters {
   minClusterSize?: number;
 }
 
+/** Adjustable clustering request parameters without repository payloads. */
 export type ClusterParameterSettings = Omit<ClusteringRequest, "repositories">;
 
+/** Properties required by the clustering settings sidebar. */
 export interface ClusterSettingsProps {
   settings: ClusterParameterSettings;
   onSettingsChange: (settings: ClusterParameterSettings) => void;

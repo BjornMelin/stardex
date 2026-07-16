@@ -1,10 +1,13 @@
+/** Algorithm identifiers accepted by the clustering API. */
 export const CLUSTERING_ALGORITHM_IDS = ["kmeans", "hierarchical", "pca_hierarchical"] as const;
 
 /** Maximum repository count accepted by the clustering API. */
 export const MAX_CLUSTERING_REPOSITORIES = 1_000;
 
+/** Supported clustering algorithm identifier. */
 export type ClusteringAlgorithm = (typeof CLUSTERING_ALGORITHM_IDS)[number];
 
+/** User-facing guidance for clustering controls and filters. */
 export const CLUSTERING_HELP_TEXT = {
   settings: {
     title: "Clustering Settings",
@@ -39,6 +42,7 @@ export const CLUSTERING_HELP_TEXT = {
   },
 };
 
+/** Numeric bounds and defaults shared by clustering controls. */
 export const CLUSTERING_CONFIG = {
   kmeans: {
     min: 1,
@@ -67,13 +71,14 @@ export const CLUSTERING_CONFIG = {
   },
 };
 
-// Default clustering parameters that match backend defaults
+/** Default clustering parameters aligned with backend defaults. */
 export const DEFAULT_CLUSTERING_PARAMS = {
   kmeans_clusters: CLUSTERING_CONFIG.kmeans.default,
   hierarchical_threshold: CLUSTERING_CONFIG.hierarchical.default,
   pca_components: CLUSTERING_CONFIG.pca.default,
 };
 
+/** Labels and descriptions for every supported clustering algorithm. */
 export const CLUSTERING_ALGORITHMS = {
   kmeans: {
     name: "K-Means",
@@ -98,6 +103,12 @@ export const CLUSTERING_ALGORITHMS = {
   { name: string; title: string; description: string }
 >;
 
+/**
+ * Derives repository-aware upper bounds for clustering parameters.
+ *
+ * @param repositoryCount - Number of repositories in the request.
+ * @returns Minimum and effective maximum values for K-means and PCA controls.
+ */
 export function getClusteringParameterBounds(repositoryCount: number) {
   const count = Math.max(repositoryCount, 1);
 
@@ -113,6 +124,13 @@ export function getClusteringParameterBounds(repositoryCount: number) {
   };
 }
 
+/**
+ * Clamps clustering settings to API and repository-count bounds.
+ *
+ * @param settings - Candidate clustering settings.
+ * @param repositoryCount - Number of repositories in the request.
+ * @returns The settings with every numeric value inside its effective bounds.
+ */
 export function clampClusteringParams<
   T extends {
     kmeans_clusters: number;

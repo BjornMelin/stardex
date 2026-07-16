@@ -29,4 +29,39 @@ describe("clustering parameter bounds", () => {
       pca_components: 1,
     });
   });
+
+  it.each([
+    {
+      label: "K-means lower bound",
+      input: { kmeans_clusters: 0, hierarchical_threshold: 1.5, pca_components: 5 },
+      expected: { kmeans_clusters: 1, hierarchical_threshold: 1.5, pca_components: 5 },
+    },
+    {
+      label: "K-means upper bound",
+      input: { kmeans_clusters: 21, hierarchical_threshold: 1.5, pca_components: 5 },
+      expected: { kmeans_clusters: 10, hierarchical_threshold: 1.5, pca_components: 5 },
+    },
+    {
+      label: "threshold lower bound",
+      input: { kmeans_clusters: 5, hierarchical_threshold: 0, pca_components: 5 },
+      expected: { kmeans_clusters: 5, hierarchical_threshold: 0.5, pca_components: 5 },
+    },
+    {
+      label: "threshold upper bound",
+      input: { kmeans_clusters: 5, hierarchical_threshold: 4, pca_components: 5 },
+      expected: { kmeans_clusters: 5, hierarchical_threshold: 3, pca_components: 5 },
+    },
+    {
+      label: "PCA lower bound",
+      input: { kmeans_clusters: 5, hierarchical_threshold: 1.5, pca_components: 0 },
+      expected: { kmeans_clusters: 5, hierarchical_threshold: 1.5, pca_components: 1 },
+    },
+    {
+      label: "PCA upper bound",
+      input: { kmeans_clusters: 5, hierarchical_threshold: 1.5, pca_components: 51 },
+      expected: { kmeans_clusters: 5, hierarchical_threshold: 1.5, pca_components: 10 },
+    },
+  ])("clamps the $label independently", ({ input, expected }) => {
+    expect(clampClusteringParams(input, 10)).toEqual(expected);
+  });
 });

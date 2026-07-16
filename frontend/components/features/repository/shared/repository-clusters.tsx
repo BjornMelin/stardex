@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { hashKey, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +21,12 @@ interface RepositoryClustersProps {
   repositories: GitHubRepo[];
 }
 
+/**
+ * Requests and renders clustering results for the active repository set.
+ *
+ * @param props - Repositories selected for clustering.
+ * @returns Clustering controls, results, or a bounded request state.
+ */
 export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
   const [clusterParams, setClusterParams] =
     useState<ClusterParameterSettings>(DEFAULT_CLUSTERING_PARAMS);
@@ -28,15 +34,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
   const [filters, setFilters] = useState<ClusterFilters>({});
   const [preferredAlgorithm, setPreferredAlgorithm] = useState<ClusteringAlgorithm>("kmeans");
 
-  const clusteringInputKey = useMemo(
-    () =>
-      repositories.map(({ id, name, description }) => ({
-        id,
-        name,
-        description,
-      })),
-    [repositories]
-  );
+  const clusteringInputKey = useMemo(() => hashKey([repositories]), [repositories]);
   const requestParams = useMemo(
     () => clampClusteringParams(clusterParams, repositories.length),
     [clusterParams, repositories.length]

@@ -144,7 +144,11 @@ export async function clusterRepositories(request: ClusteringRequest): Promise<C
   return parsed.data;
 }
 
-// Health check function
+/**
+ * Checks whether the configured clustering backend reports healthy.
+ *
+ * @returns `true` only for a successful healthy response; otherwise `false`.
+ */
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/health`);

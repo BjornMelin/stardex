@@ -16,12 +16,16 @@ const { queryOptions, queryState } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: (options: { enabled?: boolean; queryKey?: readonly unknown[] }) => {
-    queryOptions.current = options;
-    return queryState;
-  },
-}));
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: (options: { enabled?: boolean; queryKey?: readonly unknown[] }) => {
+      queryOptions.current = options;
+      return queryState;
+    },
+  };
+});
 
 vi.mock("../cluster-view/cluster-view", () => ({
   ClusterView: ({ algorithm }: { algorithm: string }) => <div>{algorithm} view</div>,
@@ -132,11 +136,11 @@ describe("RepositoryClusters", () => {
     expect(screen.getByText(/Narrow the active filters/)).toBeInTheDocument();
   });
 
-  it("invalidates clustering when mutable text changes for the same repository IDs", () => {
+  it("invalidates clustering when repository request input changes", () => {
     const { rerender } = render(<RepositoryClusters repositories={repositories} />);
     const initialKey = queryOptions.current?.queryKey;
     const updatedRepositories = repositories.map((repository, index) =>
-      index === 0 ? { ...repository, description: "Updated clustering content" } : repository
+      index === 0 ? { ...repository, topics: ["updated-topic"] } : repository
     );
 
     rerender(<RepositoryClusters repositories={updatedRepositories} />);

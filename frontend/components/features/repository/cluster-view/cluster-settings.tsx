@@ -10,6 +10,12 @@ import { FilterPanel } from "./settings/filter-panel";
 import { HelpContent } from "./settings/help-content";
 import { ParameterSettings } from "./settings/parameter-settings";
 
+/**
+ * Renders persistent clustering parameter and result-filter controls.
+ *
+ * @param props - Current settings, available metadata, and update callbacks.
+ * @returns The clustering settings sidebar.
+ */
 export function ClusterSettings({
   settings,
   onSettingsChange,

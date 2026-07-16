@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clusterRepositories } from "./clustering-api";
+import { ClusteringApiError, clusterRepositories } from "./clustering-api";
 import type { GitHubRepo } from "./github";
 
 const repository: GitHubRepo = {
@@ -56,5 +56,36 @@ describe("clusterRepositories", () => {
     expect(result.kmeans_clusters?.parameters.num_clusters).toBe(1);
     expect(result.hierarchical_clusters).toBeUndefined();
     expect(result.pca_hierarchical_clusters).toBeUndefined();
+  });
+
+  it("rejects unsupported clustering algorithm identifiers", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              status: "success",
+              kmeans_clusters: {
+                algorithm: "unsupported",
+                clusters: { 0: [0] },
+                parameters: { num_clusters: 1 },
+                processing_time_ms: 1,
+              },
+              total_processing_time_ms: 1,
+            }),
+            { status: 200 }
+          )
+      )
+    );
+
+    await expect(
+      clusterRepositories({
+        repositories: [repository],
+        kmeans_clusters: 1,
+        hierarchical_threshold: 1.5,
+        pca_components: 1,
+      })
+    ).rejects.toBeInstanceOf(ClusteringApiError);
   });
 });
