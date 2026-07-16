@@ -1,7 +1,7 @@
+import asyncio
 from collections.abc import Iterator
 from typing import cast
 
-import pytest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -42,8 +42,7 @@ def make_receive(messages: Iterator[Message]) -> Receive:
     return receive
 
 
-@pytest.mark.asyncio
-async def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
+def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
     observed: list[Message] = []
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -64,7 +63,7 @@ async def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await middleware(make_scope(), receive, send)
+    asyncio.run(middleware(make_scope(), receive, send))
 
     assert observed == [
         {"type": "http.request", "body": b"12345678", "more_body": False}
@@ -72,8 +71,7 @@ async def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
     assert sent[0]["status"] == 200
 
 
-@pytest.mark.asyncio
-async def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None:
+def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None:
     downstream_called = False
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -95,14 +93,13 @@ async def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await middleware(make_scope(), receive, send)
+    asyncio.run(middleware(make_scope(), receive, send))
 
     assert not downstream_called
     assert sent[0]["status"] == 413
 
 
-@pytest.mark.asyncio
-async def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
+def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
     downstream_called = False
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -127,7 +124,7 @@ async def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
     async def send(message: Message) -> None:
         sent.append(message)
 
-    await middleware(make_scope(), receive, send)
+    asyncio.run(middleware(make_scope(), receive, send))
 
     assert not downstream_called
     assert sent[0]["status"] == 413
