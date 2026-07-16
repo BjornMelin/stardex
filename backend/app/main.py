@@ -21,6 +21,8 @@ from app.models import ClusteringRequest, ClusteringResponse, ClusterResult, Git
 
 logger = logging.getLogger(__name__)
 DENSE_CLUSTERING_MAX_REPOSITORIES = 250
+MAX_VALIDATION_ERROR_DETAILS = 5
+MAX_VALIDATION_ERROR_MESSAGE_CHARS = 1_024
 
 load_dotenv()
 
@@ -49,13 +51,47 @@ app.add_middleware(
 )
 
 
+def summarize_request_validation_error(exc: RequestValidationError) -> str:
+    """Summarize validation failures without reflecting rejected request data."""
+    errors = exc.errors()
+    details: list[str] = []
+
+    for error in errors[:MAX_VALIDATION_ERROR_DETAILS]:
+        if not isinstance(error, dict):
+            continue
+
+        location = error.get("loc")
+        path = (
+            ".".join(str(part) for part in location)
+            if isinstance(location, (list, tuple))
+            else ""
+        )
+        message = error.get("msg")
+        if not isinstance(message, str):
+            continue
+
+        details.append(f"{path}: {message}" if path else message)
+
+    summary = "Request validation failed"
+    if details:
+        summary = f"{summary}: {'; '.join(details)}"
+
+    omitted = max(0, len(errors) - MAX_VALIDATION_ERROR_DETAILS)
+    if omitted:
+        summary = f"{summary}; {omitted} additional errors"
+
+    return summary[:MAX_VALIDATION_ERROR_MESSAGE_CHARS]
+
+
 @app.exception_handler(RequestValidationError)
 async def request_validation_error_handler(
     _request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     """Return request validation errors using the ClusteringResponse shape."""
     payload = ClusteringResponse(
-        status="error", error_message=str(exc), total_processing_time_ms=0
+        status="error",
+        error_message=summarize_request_validation_error(exc),
+        total_processing_time_ms=0,
     ).model_dump(exclude_none=True)
     return JSONResponse(status_code=422, content=payload)
 

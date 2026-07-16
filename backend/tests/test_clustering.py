@@ -131,15 +131,22 @@ def test_request_model_accepts_supported_large_repository_sets(count: int) -> No
 
 
 def test_request_rejects_repository_sets_above_limit(client: TestClient) -> None:
+    repositories = make_repositories(MAX_CLUSTERING_REPOSITORIES + 1)
+    repositories[0]["name"] = "must-not-be-reflected"
+
     response = client.post(
         "/clustering",
-        json={"repositories": make_repositories(MAX_CLUSTERING_REPOSITORIES + 1)},
+        json={"repositories": repositories},
     )
 
     assert response.status_code == 422
     payload: dict[str, object] = response.json()
     assert payload["status"] == "error"
     assert RESULT_FIELDS.isdisjoint(payload)
+    assert "body.repositories" in str(payload["error_message"])
+    assert "at most 1000 items" in str(payload["error_message"])
+    assert "must-not-be-reflected" not in response.text
+    assert len(response.content) < 2_048
 
 
 @pytest.mark.parametrize(
