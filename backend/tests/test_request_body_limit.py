@@ -43,6 +43,7 @@ def make_receive(messages: Iterator[Message]) -> Receive:
 
 
 def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
+    """Coalesce a valid multiframe body before forwarding it."""
     observed: list[Message] = []
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -72,6 +73,7 @@ def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
 
 
 def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None:
+    """Reject a multiframe body that exceeds the byte limit."""
     downstream_called = False
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -100,6 +102,7 @@ def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None:
 
 
 def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
+    """Reject a body that exceeds the tiny-frame traffic limit."""
     downstream_called = False
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
@@ -132,6 +135,7 @@ def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
 
 
 def test_valid_nine_mebibyte_body_accepts_eight_kibibyte_frames() -> None:
+    """Accept a valid large body carried in ordinary-size frames."""
     observed: list[Message] = []
 
     async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
