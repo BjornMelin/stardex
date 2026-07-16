@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitHubRepo } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
@@ -67,5 +67,36 @@ describe("RepositoryList", () => {
       "aria-pressed",
       "true"
     );
+  });
+
+  it("preserves valid pages across refreshes and clamps pages after shrinkage", async () => {
+    const repositories = Array.from({ length: 31 }, (_, index) => ({
+      ...repository,
+      id: index + 1,
+      name: `repository-${index + 1}`,
+      full_name: `example/repository-${index + 1}`,
+      stargazers_count: index + 1,
+    }));
+    act(() => {
+      useGitHubStore.setState({
+        repos: { example: repositories },
+        pagination: { currentPage: 2, itemsPerPage: 30 },
+      });
+    });
+
+    render(<RepositoryList />);
+    expect(useGitHubStore.getState().pagination.currentPage).toBe(2);
+
+    act(() => {
+      useGitHubStore.getState().setRepos({ example: repositories.map((repo) => ({ ...repo })) });
+    });
+    expect(useGitHubStore.getState().pagination.currentPage).toBe(2);
+
+    act(() => {
+      useGitHubStore.getState().setRepos({ example: [repository] });
+    });
+    await waitFor(() => {
+      expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
+    });
   });
 });

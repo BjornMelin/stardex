@@ -82,7 +82,7 @@ describe("GitHub store repository ownership", () => {
     ]);
   });
 
-  it("resets pagination when repository sources or filters change", () => {
+  it("resets pagination when users or filters change", () => {
     const first = makeRepository(1, "first");
     const second = makeRepository(2, "second");
     const state = useGitHubStore.getState();
@@ -91,9 +91,7 @@ describe("GitHub store repository ownership", () => {
     state.addUser("alice");
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
 
-    useGitHubStore.getState().setCurrentPage(3);
     useGitHubStore.getState().setRepos({ alice: [first, second] });
-    expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
 
     useGitHubStore.setState({ pagination: { currentPage: 2, itemsPerPage: 1 } });
     useGitHubStore.getState().setFilters({
@@ -102,6 +100,16 @@ describe("GitHub store repository ownership", () => {
     });
 
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
+  });
+
+  it("preserves pagination when repository data refreshes", () => {
+    const state = useGitHubStore.getState();
+    state.addUser("alice");
+    state.setCurrentPage(3);
+
+    state.setRepos({ alice: [makeRepository(1, "refreshed")] });
+
+    expect(useGitHubStore.getState().pagination.currentPage).toBe(3);
   });
 
   it("reconciles filters when a repository source is replaced", () => {

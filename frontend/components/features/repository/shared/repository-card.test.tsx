@@ -29,19 +29,23 @@ describe("RepositoryCard", () => {
   it("links to native GitHub contribution-ready issues", () => {
     render(<RepositoryCard repo={repository} viewMode="grid" />);
 
-    const link = screen.getByRole("link", { name: "Find contribution issues" });
+    const link = screen.getByRole("link", {
+      name: "Find contribution issues for vercel/next.js",
+    });
     const url = new URL(link.getAttribute("href") ?? "");
     expect(url.pathname).toBe("/vercel/next.js/issues");
     expect(url.searchParams.get("q")).toContain('label:"good first issue","help wanted"');
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link.parentElement).toHaveClass("col-span-2", "sm:col-start-2");
+    expect(link).toHaveClass("whitespace-normal", "sm:whitespace-nowrap");
   });
 
   it("omits the contribution link when GitHub reports no open issues", () => {
     render(<RepositoryCard repo={{ ...repository, open_issues_count: 0 }} viewMode="grid" />);
 
     expect(
-      screen.queryByRole("link", { name: "Find contribution issues" })
+      screen.queryByRole("link", { name: /Find contribution issues for/ })
     ).not.toBeInTheDocument();
   });
 });

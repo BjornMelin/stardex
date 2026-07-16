@@ -80,8 +80,15 @@ export function RepositoryList() {
   }, [error, toast]);
 
   const allRepos = getFilteredAndSortedRepos();
+  const lastPage = Math.max(1, Math.ceil(allRepos.length / itemsPerPage));
   const pageStart = (currentPage - 1) * itemsPerPage;
   const currentPageRepos = allRepos.slice(pageStart, pageStart + itemsPerPage);
+
+  useEffect(() => {
+    if (currentPage > lastPage) {
+      setCurrentPage(lastPage);
+    }
+  }, [currentPage, lastPage, setCurrentPage]);
 
   if (selectedUsers.length === 0) {
     return <RepositoryEmptyState />;

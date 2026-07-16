@@ -60,7 +60,7 @@ function reconcileFilters(filters: FilterCriteria, repositories: GitHubRepo[]): 
   };
 }
 
-/** Stores selected repositories and resets pagination when source or filter state changes. */
+/** Stores selected repositories and resets pagination when users or filters change. */
 export const useGitHubStore = create<GitHubStore>((set, get) => ({
   selectedUsers: [],
   addUser: (username) =>
@@ -97,7 +97,6 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
           state.filters,
           selectRepositories(state.selectedUsers, mergedRepos)
         ),
-        pagination: { ...state.pagination, currentPage: 1 },
       };
     }),
   clearRepos: () =>
