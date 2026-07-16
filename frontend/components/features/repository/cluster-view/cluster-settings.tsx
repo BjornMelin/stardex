@@ -5,14 +5,22 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CLUSTERING_HELP_TEXT } from "@/lib/constants/clustering";
-import { ClusterSettingsProps } from "@/lib/types/clustering";
+import type { ClusterSettingsProps } from "@/lib/types/clustering";
 import { FilterPanel } from "./settings/filter-panel";
 import { HelpContent } from "./settings/help-content";
 import { ParameterSettings } from "./settings/parameter-settings";
 
+/**
+ * Renders persistent clustering parameter and result-filter controls.
+ *
+ * @param props - Current settings, available metadata, and update callbacks.
+ * @returns The clustering settings sidebar.
+ */
 export function ClusterSettings({
   settings,
   onSettingsChange,
+  repositoryCount,
+  availableAlgorithms,
   filters = {},
   onFiltersChange,
   availableLanguages = [],
@@ -31,7 +39,7 @@ export function ClusterSettings({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2"
+              className="h-11 px-3 sm:h-7 sm:px-2"
               onClick={() => setShowingSettings(!showingSettings)}
             >
               {showingSettings ? "Filters" : "Settings"}
@@ -42,7 +50,7 @@ export function ClusterSettings({
                   aria-label="Clustering help"
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0"
+                  className="h-11 w-11 p-0 sm:h-7 sm:w-7"
                   title="Clustering help"
                 >
                   <HelpCircle className="h-4 w-4" />
@@ -63,11 +71,16 @@ export function ClusterSettings({
 
       <div className="overflow-y-auto flex-1">
         {showingSettings ? (
-          <ParameterSettings settings={settings} onSettingsChange={onSettingsChange} />
+          <ParameterSettings
+            settings={settings}
+            onSettingsChange={onSettingsChange}
+            repositoryCount={repositoryCount}
+            availableAlgorithms={availableAlgorithms}
+          />
         ) : (
           <FilterPanel
             filters={filters}
-            onFiltersChange={onFiltersChange || (() => {})}
+            onFiltersChange={onFiltersChange}
             availableLanguages={availableLanguages}
             availableTopics={availableTopics}
           />

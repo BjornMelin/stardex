@@ -4,15 +4,15 @@ Backend service for the GitHub Stars Explorer, providing advanced repository clu
 
 ## Features
 
-- **Unified Clustering Endpoint**: Single API call performs multiple clustering algorithms:
+- **Unified clustering endpoint**: One API call returns the algorithms that are valid for the repository count:
 
-  - K-means clustering for broad grouping of repositories
-  - Hierarchical clustering for detailed relationship analysis
-  - PCA + Hierarchical clustering for improved performance on large datasets
+  - Sparse K-means clustering for every non-empty set
+  - Ward hierarchical clustering for sets of 2 through 250 repositories
+  - PCA + hierarchical clustering for sets of 2 through 250 repositories
 
-- **Performance Metrics**: Get processing time for each algorithm
-- **Flexible Parameters**: Customize clustering behavior with adjustable parameters
-- **CORS Support**: Built-in support for frontend integration
+- **Performance metrics**: Read processing time for each algorithm
+- **Flexible parameters**: Set clustering behavior within documented bounds
+- **Cross-origin resource sharing (CORS)**: Configure frontend origins
 
 ## Prerequisites
 
@@ -51,9 +51,13 @@ export CORS_ORIGINS="http://localhost:3000"
 
 #### POST /clustering
 
-Performs all clustering algorithms on the provided repository data.
+Performs clustering on the provided repository data. Every valid request returns K-means. A singleton or a set larger than 250 omits hierarchical result fields.
 
-Request Body:
+Requests may contain 1 to 1,000 repositories in at most 16 MiB. Each repository
+may include up to 20 topics of at most 50 characters each, matching GitHub's
+topic limits.
+
+This singleton request asks for more clusters and PCA components than the data supports:
 
 ```json
 {
@@ -61,10 +65,21 @@ Request Body:
     {
       "id": 1,
       "name": "example-repo",
+      "full_name": "example/example-repo",
       "description": "An example repository",
+      "html_url": "https://github.com/example/example-repo",
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "open_issues_count": 0,
+      "size": 1,
+      "watchers_count": 1,
       "language": "Python",
       "topics": ["machine-learning", "data-science"],
-      ...
+      "owner": {
+        "login": "example",
+        "avatar_url": "https://example.com/avatar.png"
+      },
+      "updated_at": "2026-07-12T00:00:00Z"
     }
   ],
   "kmeans_clusters": 5,
@@ -73,7 +88,7 @@ Request Body:
 }
 ```
 
-Response:
+The response reports the effective K-means value and omits unavailable dense results:
 
 ```json
 {
@@ -81,28 +96,12 @@ Response:
   "kmeans_clusters": {
     "algorithm": "kmeans",
     "clusters": {
-      "0": [0, 2, 4],
-      "1": [1, 3, 5]
+      "0": [0]
     },
-    "parameters": {"num_clusters": 5},
-    "processing_time_ms": 150.5
+    "parameters": {"num_clusters": 1},
+    "processing_time_ms": 0.1
   },
-  "hierarchical_clusters": {
-    "algorithm": "hierarchical",
-    "clusters": {...},
-    "parameters": {"distance_threshold": 1.5},
-    "processing_time_ms": 200.3
-  },
-  "pca_hierarchical_clusters": {
-    "algorithm": "pca_hierarchical",
-    "clusters": {...},
-    "parameters": {
-      "n_components": 10,
-      "distance_threshold": 1.5
-    },
-    "processing_time_ms": 180.7
-  },
-  "total_processing_time_ms": 531.5
+  "total_processing_time_ms": 0.1
 }
 ```
 
@@ -145,20 +144,20 @@ backend/
 
 1. **K-Means Clustering**
 
-   - Groups repositories into k distinct clusters
+   - Groups repositories into at most k clusters
    - Uses TF-IDF vectorization for text data
-   - Configurable number of clusters
+   - Clamps k to the repository count
 
 2. **Hierarchical Clustering**
 
-   - Creates hierarchical relationships between repositories
+   - Produces flat groups from a hierarchical model
    - Uses Ward's method for linkage
    - Adjustable distance threshold for cluster formation
 
 3. **PCA + Hierarchical Clustering**
    - Reduces dimensionality before clustering
-   - Improves performance on large datasets
-   - Configurable number of components
+   - Clamps components to the repository and TF-IDF feature counts
+   - Runs only within the 250-repository dense-computation boundary
 
 ### Text Processing
 
@@ -197,26 +196,24 @@ backend/
 
 ## Performance Considerations
 
-The clustering service is optimized for:
+The clustering service uses:
 
-- Efficient text vectorization
-- Memory usage with scipy sparse matrices
-- Parallel processing where applicable
+- Sparse term frequency-inverse document frequency (TF-IDF) input for K-means
+- A 250-repository boundary around dense Ward/PCA computation
+- Effective parameter reporting so callers can explain clamped values
 
-For large datasets, consider:
-
-1. Adjusting PCA components to reduce dimensionality
-2. Increasing the hierarchical clustering threshold
-3. Reducing the number of K-means clusters
+Sets of 251 through 1,000 repositories use sparse K-means only.
 
 ## Limits and Validation
 
 The `POST /clustering` request model enforces safe defaults and limits:
 
-- `repositories`: 2..250 items
-- `kmeans_clusters`: 2..20 (and must be <= number of repos)
-- `hierarchical_threshold`: (0, 10]
-- `pca_components`: 2..50 (and must be <= number of repos and TF-IDF dimensions)
+- `repositories`: 1 to 1,000 items
+- `kmeans_clusters`: 1 to 20, clamped to the repository count
+- `hierarchical_threshold`: greater than 0 and at most 10
+- `pca_components`: 1 to 50, clamped to the repository and TF-IDF feature counts
+
+Responses omit unavailable algorithm fields and report the effective K-means and PCA values actually used.
 
 ## Contributing
 

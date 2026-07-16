@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { GitHubRepo } from "./github";
+import { CLUSTERING_ALGORITHM_IDS } from "./constants/clustering";
+import type { GitHubRepo } from "./github";
 
 const ClusterResultSchema = z.strictObject({
-  algorithm: z.string(),
+  algorithm: z.enum(CLUSTERING_ALGORITHM_IDS),
   clusters: z.record(z.string(), z.array(z.number().int().nonnegative())),
   parameters: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
   processing_time_ms: z.number().nonnegative(),
@@ -143,34 +144,11 @@ export async function clusterRepositories(request: ClusteringRequest): Promise<C
   return parsed.data;
 }
 
-// Default clustering configuration
-export const defaultClusteringConfig: ClusteringRequest = {
-  repositories: [],
-  kmeans_clusters: 5,
-  hierarchical_threshold: 1.5,
-  pca_components: 10,
-};
-
-// Algorithm descriptions
-export const algorithmDescriptions = {
-  kmeans: {
-    name: "K-Means Clustering",
-    description:
-      "Groups repositories into distinct clusters based on feature similarity. Each repository belongs to the cluster with the nearest mean, resulting in partitions that minimize within-cluster distances.",
-  },
-  hierarchical: {
-    name: "Hierarchical Clustering",
-    description:
-      "Creates a tree-like structure of repository relationships where larger clusters contain smaller, more tightly related groups. The threshold controls how closely related repositories must be to form a cluster.",
-  },
-  pca_hierarchical: {
-    name: "PCA + Hierarchical",
-    description:
-      "First reduces repository features to principal components that capture the most important patterns, then performs hierarchical clustering. This can reveal underlying structures that might be hidden in the raw features.",
-  },
-};
-
-// Health check function
+/**
+ * Checks whether the configured clustering backend reports healthy.
+ *
+ * @returns `true` only for a successful healthy response; otherwise `false`.
+ */
 export async function checkBackendHealth(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/health`);

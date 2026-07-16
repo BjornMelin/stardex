@@ -119,12 +119,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ### POST /clustering
 
-Runs clustering algorithms over repository descriptions/names. The backend validates and enforces limits:
+Runs clustering algorithms over repository descriptions and names. Every valid request returns K-means. Sets of 2 to 250 repositories also return hierarchical and PCA + hierarchical results. Other responses omit those fields.
 
-- `repositories`: 2..250 items
-- `kmeans_clusters`: 2..20 (and must be <= number of repos)
-- `hierarchical_threshold`: (0, 10]
-- `pca_components`: 2..50 (and must be <= number of repos and TF-IDF dimensions)
+- `repositories`: 1 to 1,000 items
+- Request body: at most 16 MiB
+- Repository topics: at most 20, with at most 50 characters per topic
+- `kmeans_clusters`: 1 to 20, clamped to the repository count
+- `hierarchical_threshold`: greater than 0 and at most 10
+- `pca_components`: 1 to 50, clamped to the repository and term frequency-inverse document frequency (TF-IDF) feature counts
 
 <details>
 <summary>Request Body</summary>
@@ -181,12 +183,14 @@ Runs clustering algorithms over repository descriptions/names. The backend valid
   "pca_hierarchical_clusters": {
     "algorithm": "pca_hierarchical",
     "clusters": { "1": [0, 2, 4], "2": [1, 3, 5] },
-    "parameters": { "n_components": 10, "distance_threshold": 1.5 },
+    "parameters": { "n_components": 6, "distance_threshold": 1.5 },
     "processing_time_ms": 180.7
   },
   "total_processing_time_ms": 531.5
 }
 ```
+
+The response reports effective parameter values. For one repository or more than 250 repositories, only `kmeans_clusters` is present.
 
 </details>
 

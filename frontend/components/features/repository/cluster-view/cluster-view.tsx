@@ -1,26 +1,28 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  computeClusterData,
-  extractUniqueMeta,
-  filterClusters,
-  getClusterSimilarity,
-} from "@/lib/clustering/utils";
-import { algorithmDescriptions } from "@/lib/clustering-api";
-import { ClusterViewProps } from "@/lib/types/clustering";
+import { computeClusterData, extractUniqueMeta, filterClusters } from "@/lib/clustering/utils";
+import { CLUSTERING_ALGORITHMS } from "@/lib/constants/clustering";
+import type { ClusterViewProps } from "@/lib/types/clustering";
 import { ClusterCard } from "./cluster-card";
 import { ClusterSettings } from "./cluster-settings";
 
+/**
+ * Renders one clustering result with persistent controls and searchable groups.
+ *
+ * @param props - Result, repositories, settings, and callbacks for the active algorithm.
+ * @returns The interactive cluster result view.
+ */
 export function ClusterView({
   result,
   repositories,
   algorithm,
+  availableAlgorithms,
   currentSettings,
   currentFilters,
   onSettingsChange,
@@ -48,26 +50,32 @@ export function ClusterView({
   };
 
   const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(false);
+  const settingsPanelId = useId();
 
   return (
     <div className="h-[calc(100vh-24rem)]">
       <div className="flex h-full">
         {/* Settings Panel */}
         <div className={`relative h-full flex ${isSettingsCollapsed ? "w-0" : ""}`}>
-          {!isSettingsCollapsed && (
+          <div id={settingsPanelId} className="h-full" hidden={isSettingsCollapsed}>
             <ClusterSettings
               settings={currentSettings}
-              onSettingsChange={onSettingsChange || (() => {})}
+              onSettingsChange={onSettingsChange}
+              repositoryCount={repositories.length}
+              availableAlgorithms={availableAlgorithms}
               filters={currentFilters}
-              onFiltersChange={onFiltersChange || (() => {})}
+              onFiltersChange={onFiltersChange}
               availableLanguages={allLanguages}
               availableTopics={allTopics}
             />
-          )}
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 h-12 w-6 border shadow-sm bg-background"
+            className="absolute right-0 top-1/2 z-10 h-12 w-11 -translate-y-1/2 translate-x-1/2 border bg-background shadow-sm sm:w-6"
+            aria-label={isSettingsCollapsed ? "Show cluster settings" : "Hide cluster settings"}
+            aria-controls={settingsPanelId}
+            aria-expanded={!isSettingsCollapsed}
             onClick={() => setIsSettingsCollapsed(!isSettingsCollapsed)}
           >
             {isSettingsCollapsed ? (
@@ -85,13 +93,10 @@ export function ClusterView({
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]?.name}
+                    {CLUSTERING_ALGORITHMS[algorithm].title}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {
-                      algorithmDescriptions[algorithm as keyof typeof algorithmDescriptions]
-                        ?.description
-                    }
+                    {CLUSTERING_ALGORITHMS[algorithm].description}
                   </p>
                 </div>
                 <Badge variant="outline" className="text-xs">
@@ -100,6 +105,7 @@ export function ClusterView({
               </div>
               <div className="flex gap-4 items-center">
                 <Input
+                  aria-label="Search clusters"
                   placeholder="Search clusters..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -112,17 +118,12 @@ export function ClusterView({
             </div>
             <ScrollArea className="flex-1">
               <div className="grid gap-2 px-4 pb-4">
-                {filteredClusters.map((cluster, index) => (
+                {filteredClusters.map((cluster) => (
                   <ClusterCard
                     key={cluster.id}
                     cluster={cluster}
-                    algorithm={algorithm}
-                    index={index}
                     isExpanded={expandedClusters.has(cluster.id)}
                     onToggle={() => toggleCluster(cluster.id)}
-                    getClusterSimilarity={getClusterSimilarity}
-                    previousCluster={index > 0 ? filteredClusters[index - 1] : undefined}
-                    sortedClusters={sortedClusters}
                   />
                 ))}
               </div>

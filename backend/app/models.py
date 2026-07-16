@@ -1,15 +1,17 @@
 """Pydantic models for the Stardex API."""
 
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-from app.errors import InvalidClusteringParametersError
+from pydantic import BaseModel, ConfigDict, Field
 
 
-MAX_REPOSITORIES = 250
+MAX_CLUSTERING_REPOSITORIES = 1_000
+MAX_CLUSTERING_REQUEST_BYTES = 16 * 1024 * 1024
 MAX_DESCRIPTION_CHARS = 2_000
-MAX_TOPICS = 50
+MAX_TOPICS = 20
+MAX_TOPIC_CHARS = 50
+
+GitHubTopic = Annotated[str, Field(min_length=1, max_length=MAX_TOPIC_CHARS)]
 
 
 class GitHubOwner(BaseModel):
@@ -35,7 +37,7 @@ class GitHubRepo(BaseModel):
     size: int = Field(..., ge=0)
     watchers_count: int = Field(..., ge=0)
     language: str | None = Field(default=None, max_length=128)
-    topics: list[str] = Field(default_factory=list, max_length=MAX_TOPICS)
+    topics: list[GitHubTopic] = Field(default_factory=list, max_length=MAX_TOPICS)
     owner: GitHubOwner
     updated_at: str = Field(..., min_length=1, max_length=64)
 
@@ -48,13 +50,13 @@ class ClusteringRequest(BaseModel):
     repositories: list[GitHubRepo] = Field(
         ...,
         description="List of GitHub repositories to cluster",
-        min_length=2,
-        max_length=MAX_REPOSITORIES,
+        min_length=1,
+        max_length=MAX_CLUSTERING_REPOSITORIES,
     )
     kmeans_clusters: int = Field(
         default=5,
         description="Number of clusters for K-means clustering",
-        ge=2,
+        ge=1,
         le=20,
     )
     hierarchical_threshold: float = Field(
@@ -64,31 +66,18 @@ class ClusteringRequest(BaseModel):
         le=10.0,
     )
     pca_components: int = Field(
-        default=10, description="Number of components for PCA", ge=2, le=50
+        default=10, description="Number of components for PCA", ge=1, le=50
     )
 
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def validate_parameters(self) -> "ClusteringRequest":
-        """Validate parameter relationships after basic field validation."""
-        n_repos = len(self.repositories)
-
-        if self.kmeans_clusters > n_repos:
-            param_name = "kmeans_clusters"
-            raise InvalidClusteringParametersError(param_name)
-
-        if self.pca_components > n_repos:
-            param_name = "pca_components"
-            raise InvalidClusteringParametersError(param_name)
-
-        return self
 
 
 class ClusterResult(BaseModel):
     """Result from a single clustering algorithm."""
 
-    algorithm: str = Field(..., description="Name of the clustering algorithm")
+    algorithm: Literal["kmeans", "hierarchical", "pca_hierarchical"] = Field(
+        ..., description="Name of the clustering algorithm"
+    )
     clusters: dict[int, list[int]] = Field(
         ..., description="Mapping of cluster IDs to repository indices"
     )
@@ -141,7 +130,7 @@ class ClusteringResponse(BaseModel):
                 "pca_hierarchical_clusters": {
                     "algorithm": "pca_hierarchical",
                     "clusters": {"0": [0, 2, 4], "1": [1, 3, 5]},
-                    "parameters": {"n_components": 10, "distance_threshold": 1.5},
+                    "parameters": {"n_components": 6, "distance_threshold": 1.5},
                     "processing_time_ms": 180.7,
                 },
                 "total_processing_time_ms": 531.5,
