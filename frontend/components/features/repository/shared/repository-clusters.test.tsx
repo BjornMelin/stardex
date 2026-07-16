@@ -79,6 +79,21 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RepositoryClusters", () => {
+  it("renders loading and request error states", () => {
+    queryState.data = undefined;
+    queryState.isLoading = true;
+    const { rerender } = render(<RepositoryClusters repositories={repositories} />);
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    queryState.isLoading = false;
+    queryState.error = new Error("Clustering unavailable");
+    rerender(<RepositoryClusters repositories={repositories} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Clustering unavailable");
+  });
+
   it("falls back to an available tab without an effect or remount", () => {
     const { rerender } = render(<RepositoryClusters repositories={repositories} />);
     const kmeansTab = screen.getByRole("tab", { name: "K-Means" });

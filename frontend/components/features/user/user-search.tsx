@@ -51,6 +51,7 @@ export function UserSearch() {
 
   const requestRepositories = useCallback(() => {
     setShouldFetchRepos(true);
+    // RepositoryList owns refetch errors; invalidation intentionally runs in the background.
     void queryClient.invalidateQueries({ queryKey: ["starredRepos", selectedUsers] });
   }, [queryClient, selectedUsers, setShouldFetchRepos]);
 

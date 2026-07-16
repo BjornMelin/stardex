@@ -37,7 +37,9 @@ load_dotenv()
 app = FastAPI(
     title="Stardex Backend",
     version="0.1.0",
-    description="API for clustering GitHub repositories using multiple algorithms",
+    description=(
+        "API for clustering GitHub repositories using multiple algorithms"
+    ),
 )
 
 SAFE_VALIDATION_LOCATION_PARTS = frozenset(
@@ -63,7 +65,8 @@ app.add_middleware(
     max_bytes=MAX_CLUSTERING_REQUEST_BYTES,
 )
 
-# Configure CORS outside the request limit so rejection responses include CORS headers.
+# Configure CORS outside the request limit so rejection responses include
+# CORS headers.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parse_cors_origins(os.getenv("CORS_ORIGINS")),
@@ -95,7 +98,10 @@ def summarize_request_validation_error(exc: RequestValidationError) -> str:
             for part in location:
                 if isinstance(part, int):
                     safe_path_parts.append(str(part))
-                elif isinstance(part, str) and part in SAFE_VALIDATION_LOCATION_PARTS:
+                elif (
+                    isinstance(part, str)
+                    and part in SAFE_VALIDATION_LOCATION_PARTS
+                ):
                     safe_path_parts.append(part)
                 else:
                     break
@@ -140,7 +146,9 @@ async def request_validation_error_handler(
 
 def extract_repo_descriptions(repositories: list[GitHubRepo]) -> list[str]:
     """Extract descriptions from repositories, handling None values."""
-    return [(repo.description or "").strip() or repo.name for repo in repositories]
+    return [
+        (repo.description or "").strip() or repo.name for repo in repositories
+    ]
 
 
 @app.post("/clustering", response_model_exclude_none=True)
@@ -185,12 +193,16 @@ def perform_all_clustering(
             hierarchical_clusters = perform_hierarchical(
                 descriptions, distance_threshold=request.hierarchical_threshold
             )
-            hierarchical_time = (time.perf_counter() - hierarchical_start) * 1000
+            hierarchical_time = (
+                time.perf_counter() - hierarchical_start
+            ) * 1000
 
             result.hierarchical_clusters = ClusterResult(
                 algorithm="hierarchical",
                 clusters=hierarchical_clusters,
-                parameters={"distance_threshold": request.hierarchical_threshold},
+                parameters={
+                    "distance_threshold": request.hierarchical_threshold
+                },
                 processing_time_ms=hierarchical_time,
             )
 
@@ -213,7 +225,9 @@ def perform_all_clustering(
             )
 
         # Calculate total processing time
-        result.total_processing_time_ms = (time.perf_counter() - start_time) * 1000
+        result.total_processing_time_ms = (
+            time.perf_counter() - start_time
+        ) * 1000
 
     except ValueError as exc:
         http_response.status_code = 400

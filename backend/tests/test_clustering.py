@@ -25,8 +25,19 @@ RESULT_FIELDS = frozenset(
 KMEANS_ONLY = frozenset({"kmeans_clusters"})
 
 
-def make_repository(index: int, description: str | None = None) -> dict[str, object]:
-    """Build a deterministic GitHub repository payload."""
+def make_repository(
+    index: int,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Build a deterministic GitHub repository payload.
+
+    Args:
+        index: Stable index used for repository fields.
+        description: Optional repository description override.
+
+    Returns:
+        A serialized repository payload.
+    """
     return {
         "id": index + 1,
         "name": f"repo-{index}",
@@ -49,12 +60,24 @@ def make_repository(index: int, description: str | None = None) -> dict[str, obj
 
 
 def make_repositories(count: int) -> list[dict[str, object]]:
-    """Build a deterministic repository collection."""
+    """Build a deterministic repository collection.
+
+    Args:
+        count: Number of repositories to create.
+
+    Returns:
+        ``count`` serialized repository payloads.
+    """
     return [make_repository(index) for index in range(count)]
 
 
 def assert_partition(result: object, count: int) -> None:
-    """Assert that a cluster result contains each input index exactly once."""
+    """Assert that a cluster result contains each input index exactly once.
+
+    Args:
+        result: Serialized clustering result to inspect.
+        count: Expected number of unique repository indices.
+    """
     assert isinstance(result, dict)
     clusters = result.get("clusters")
     assert isinstance(clusters, dict)
@@ -70,8 +93,19 @@ def assert_partition(result: object, count: int) -> None:
     assert sorted(members) == list(range(count))
 
 
-def result_parameters(payload: dict[str, object], field: str) -> dict[str, object]:
-    """Return parameters from one serialized cluster result."""
+def result_parameters(
+    payload: dict[str, object],
+    field: str,
+) -> dict[str, object]:
+    """Return parameters from one serialized cluster result.
+
+    Args:
+        payload: Serialized clustering response.
+        field: Result field whose parameters should be returned.
+
+    Returns:
+        The selected result's parameter mapping.
+    """
     result = payload[field]
     assert isinstance(result, dict)
     parameters = result.get("parameters")
@@ -118,18 +152,17 @@ def test_clustering_cardinality_contract(
     for field in expected_results:
         assert_partition(payload[field], count)
 
-    assert (
-        result_parameters(payload, "kmeans_clusters")["num_clusters"] == expected_kmeans
-    )
+    kmeans_parameters = result_parameters(payload, "kmeans_clusters")
+    assert kmeans_parameters["num_clusters"] == expected_kmeans
     if expected_pca is not None:
-        assert (
-            result_parameters(payload, "pca_hierarchical_clusters")["n_components"]
-            == expected_pca
-        )
+        pca_parameters = result_parameters(payload, "pca_hierarchical_clusters")
+        assert pca_parameters["n_components"] == expected_pca
 
 
 @pytest.mark.parametrize("count", [251, MAX_CLUSTERING_REPOSITORIES])
-def test_request_model_accepts_supported_large_repository_sets(count: int) -> None:
+def test_request_model_accepts_supported_large_repository_sets(
+    count: int,
+) -> None:
     request = ClusteringRequest.model_validate(
         {"repositories": make_repositories(count)}
     )
@@ -137,7 +170,9 @@ def test_request_model_accepts_supported_large_repository_sets(count: int) -> No
     assert len(request.repositories) == count
 
 
-def test_request_rejects_repository_sets_above_limit(client: TestClient) -> None:
+def test_request_rejects_repository_sets_above_limit(
+    client: TestClient,
+) -> None:
     repositories = make_repositories(MAX_CLUSTERING_REPOSITORIES + 1)
     repositories[0]["name"] = "must-not-be-reflected"
 
@@ -177,7 +212,9 @@ def test_request_validation_never_reflects_extra_field_names(
     assert len(response.content) < 2_048
 
 
-def test_request_rejects_declared_body_above_byte_limit(client: TestClient) -> None:
+def test_request_rejects_declared_body_above_byte_limit(
+    client: TestClient,
+) -> None:
     response = client.post(
         "/clustering",
         content=b"{}",
@@ -188,11 +225,12 @@ def test_request_rejects_declared_body_above_byte_limit(client: TestClient) -> N
     )
 
     assert response.status_code == 413
+    expected_error = (
+        "Request body exceeds the configured transport limits (16 MiB maximum)"
+    )
     assert response.json() == {
         "status": "error",
-        "error_message": (
-            "Request body exceeds the configured transport limits (16 MiB maximum)"
-        ),
+        "error_message": expected_error,
         "total_processing_time_ms": 0,
     }
 
@@ -263,7 +301,10 @@ def test_large_request_never_calls_dense_algorithms(
     monkeypatch.setattr("app.main.perform_hierarchical", fail_if_called)
     monkeypatch.setattr("app.main.perform_pca_hierarchical", fail_if_called)
 
-    response = client.post("/clustering", json={"repositories": make_repositories(251)})
+    response = client.post(
+        "/clustering",
+        json={"repositories": make_repositories(251)},
+    )
 
     assert response.status_code == 200
     payload: dict[str, object] = response.json()
@@ -273,7 +314,8 @@ def test_large_request_never_calls_dense_algorithms(
 
 def test_pca_components_clamp_to_feature_count() -> None:
     descriptions = [
-        "python python data" if index % 2 else "python data data" for index in range(10)
+        "python python data" if index % 2 else "python data data"
+        for index in range(10)
     ]
 
     clusters, effective_components = perform_pca_hierarchical(
@@ -284,11 +326,16 @@ def test_pca_components_clamp_to_feature_count() -> None:
     assert_partition({"clusters": clusters}, len(descriptions))
 
 
-def test_dense_algorithms_cap_tfidf_features(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dense_algorithms_cap_tfidf_features(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     observed_limits: list[int | None] = []
     select_vectorizer = clustering._select_vectorizer  # noqa: SLF001
 
-    def tracked_vectorizer(data: list[str], max_features: int | None = None) -> object:
+    def tracked_vectorizer(
+        data: list[str],
+        max_features: int | None = None,
+    ) -> object:
         observed_limits.append(max_features)
         return select_vectorizer(data, max_features=max_features)
 
@@ -298,7 +345,10 @@ def test_dense_algorithms_cap_tfidf_features(monkeypatch: pytest.MonkeyPatch) ->
     clustering.perform_hierarchical(descriptions)
     clustering.perform_pca_hierarchical(descriptions)
 
-    assert observed_limits == [DENSE_TFIDF_MAX_FEATURES, DENSE_TFIDF_MAX_FEATURES]
+    assert observed_limits == [
+        DENSE_TFIDF_MAX_FEATURES,
+        DENSE_TFIDF_MAX_FEATURES,
+    ]
 
 
 def test_stop_word_only_descriptions_use_character_fallback(

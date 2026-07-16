@@ -8,7 +8,7 @@
     "build": "concurrently \"pnpm run build:backend\" \"pnpm run build:frontend\"",
     "build:backend": "cd backend && uv run python -m compileall app",
     "build:frontend": "cd frontend && pnpm run build",
-    "biome": "biome check frontend",
+    "biome": "biome ci --error-on-warnings .",
     "biome:format": "biome format --write frontend",
     "lint": "cd frontend && pnpm run lint",
     "typecheck": "concurrently \"pnpm run typecheck:backend\" \"pnpm run typecheck:frontend\"",

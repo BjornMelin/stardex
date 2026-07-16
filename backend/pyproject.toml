@@ -54,7 +54,7 @@ package = false
 
 [tool.ruff]
 target-version = "py311"
-line-length = 88
+line-length = 80
 indent-width = 4
 src = ["app", "tests"]
 exclude = [
