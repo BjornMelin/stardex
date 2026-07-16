@@ -10,6 +10,7 @@ import {
   CLUSTERING_ALGORITHMS,
   clampClusteringParams,
   DEFAULT_CLUSTERING_PARAMS,
+  MAX_CLUSTERING_REPOSITORIES,
 } from "@/lib/constants/clustering";
 import type { GitHubRepo } from "@/lib/github";
 import type { ClusterFilters, ClusterParameterSettings } from "@/lib/types/clustering";
@@ -48,7 +49,7 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
         repositories,
         ...requestParams,
       }),
-    enabled: repositories.length > 0,
+    enabled: repositories.length > 0 && repositories.length <= MAX_CLUSTERING_REPOSITORIES,
   });
 
   const algorithmResults = [
@@ -67,6 +68,17 @@ export function RepositoryClusters({ repositories }: RepositoryClustersProps) {
     const algorithm = availableAlgorithms.find((candidate) => candidate === value);
     if (algorithm) setPreferredAlgorithm(algorithm);
   };
+
+  if (repositories.length > MAX_CLUSTERING_REPOSITORIES) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Clustering supports up to 1,000 repositories. Narrow the active filters or remove a
+          selected GitHub user.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (isLoading) {
     return <RepositoryLoading />;

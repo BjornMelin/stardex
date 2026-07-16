@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClusteringResponse } from "@/lib/clustering-api";
+import { MAX_CLUSTERING_REPOSITORIES } from "@/lib/constants/clustering";
 import type { GitHubRepo } from "@/lib/github";
 import { RepositoryClusters } from "./repository-clusters";
 
@@ -111,6 +112,24 @@ describe("RepositoryClusters", () => {
 
     expect(queryOptions.current?.enabled).toBe(false);
     expect(screen.getByText(/No clustering results available/)).toBeInTheDocument();
+  });
+
+  it("does not query repository sets above the API limit", () => {
+    const oversizedRepositories = Array.from(
+      { length: MAX_CLUSTERING_REPOSITORIES + 1 },
+      (_, index) => ({
+        ...repositories[0],
+        id: index + 1,
+        name: `repo-${index + 1}`,
+        full_name: `example/repo-${index + 1}`,
+      })
+    );
+
+    render(<RepositoryClusters repositories={oversizedRepositories} />);
+
+    expect(queryOptions.current?.enabled).toBe(false);
+    expect(screen.getByText(/Clustering supports up to 1,000 repositories/)).toBeInTheDocument();
+    expect(screen.getByText(/Narrow the active filters/)).toBeInTheDocument();
   });
 
   it("invalidates clustering when mutable text changes for the same repository IDs", () => {

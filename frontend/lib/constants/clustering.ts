@@ -1,5 +1,8 @@
 export const CLUSTERING_ALGORITHM_IDS = ["kmeans", "hierarchical", "pca_hierarchical"] as const;
 
+/** Maximum repository count accepted by the clustering API. */
+export const MAX_CLUSTERING_REPOSITORIES = 1_000;
+
 export type ClusteringAlgorithm = (typeof CLUSTERING_ALGORITHM_IDS)[number];
 
 export const CLUSTERING_HELP_TEXT = {
