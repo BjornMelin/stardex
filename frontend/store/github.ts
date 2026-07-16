@@ -21,7 +21,6 @@ interface GitHubStore {
   setCurrentPage: (page: number) => void;
   getSelectedRepos: () => GitHubRepo[];
   getFilteredAndSortedRepos: () => GitHubRepo[];
-  getCurrentPageRepos: () => GitHubRepo[];
 }
 
 function selectRepositories(
@@ -178,13 +177,5 @@ export const useGitHubStore = create<GitHubStore>((set, get) => ({
     }
 
     return allRepos;
-  },
-  getCurrentPageRepos: () => {
-    const state = get();
-    const { currentPage, itemsPerPage } = state.pagination;
-    const allRepos = get().getFilteredAndSortedRepos();
-
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return allRepos.slice(startIndex, startIndex + itemsPerPage);
   },
 }));

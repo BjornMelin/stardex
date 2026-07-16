@@ -102,7 +102,6 @@ describe("GitHub store repository ownership", () => {
     });
 
     expect(useGitHubStore.getState().pagination.currentPage).toBe(1);
-    expect(useGitHubStore.getState().getCurrentPageRepos()).toEqual([first]);
   });
 
   it("reconciles filters when a repository source is replaced", () => {

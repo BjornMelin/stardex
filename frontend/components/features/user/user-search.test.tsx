@@ -121,4 +121,15 @@ describe("UserSearch", () => {
       queryKey: ["starredRepos", ["octocat"]],
     });
   });
+
+  it("stacks selected-user actions below the desktop breakpoint", () => {
+    store.selectedUsers = ["octocat"];
+
+    render(<UserSearch />);
+
+    const combobox = screen.getByRole("combobox");
+    expect(combobox.parentElement).toHaveClass("grid", "grid-cols-[minmax(0,1fr)_auto]", "sm:flex");
+    expect(combobox).toHaveClass("col-span-2", "sm:col-span-1");
+    expect(screen.getByRole("button", { name: "Search" })).toHaveClass("w-full", "sm:w-auto");
+  });
 });
