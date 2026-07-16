@@ -108,11 +108,12 @@ def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
         await JSONResponse({"status": "ok"})(scope, receive, send)
 
     middleware = RequestBodyLimitMiddleware(
-        cast("ASGIApp", downstream), max_bytes=8, max_messages=2
+        cast("ASGIApp", downstream), max_bytes=8, max_tiny_messages=2
     )
     receive = make_receive(
         iter(
             [
+                {"type": "http.request", "body": b"", "more_body": True},
                 {"type": "http.request", "body": b"", "more_body": True},
                 {"type": "http.request", "body": b"", "more_body": True},
                 {"type": "http.request", "body": b"", "more_body": False},
@@ -128,3 +129,40 @@ def test_excessive_empty_frames_are_rejected_before_forwarding() -> None:
 
     assert not downstream_called
     assert sent[0]["status"] == 413
+
+
+def test_valid_nine_mebibyte_body_accepts_eight_kibibyte_frames() -> None:
+    observed: list[Message] = []
+
+    async def downstream(scope: Scope, receive: Receive, send: Send) -> None:
+        observed.append(await receive())
+        await JSONResponse({"status": "ok"})(scope, receive, send)
+
+    chunk = b"x" * (8 * 1024)
+    chunk_count = 9 * 1024 * 1024 // len(chunk)
+    middleware = RequestBodyLimitMiddleware(
+        cast("ASGIApp", downstream), max_bytes=9 * 1024 * 1024
+    )
+    receive = make_receive(
+        iter(
+            [
+                {
+                    "type": "http.request",
+                    "body": chunk,
+                    "more_body": index < chunk_count - 1,
+                }
+                for index in range(chunk_count)
+            ]
+        )
+    )
+    sent: list[Message] = []
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    asyncio.run(middleware(make_scope(), receive, send))
+
+    assert len(observed) == 1
+    assert observed[0]["body"] == chunk * chunk_count
+    assert observed[0]["more_body"] is False
+    assert sent[0]["status"] == 200

@@ -4,7 +4,8 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
-DEFAULT_MAX_BODY_MESSAGES = 1_024
+MIN_EFFICIENT_BODY_CHUNK_BYTES = 512
+DEFAULT_MAX_TINY_BODY_MESSAGES = 1_024
 
 
 class RequestBodyLimitMiddleware:
@@ -14,14 +15,27 @@ class RequestBodyLimitMiddleware:
         self,
         app: ASGIApp,
         max_bytes: int,
-        max_messages: int = DEFAULT_MAX_BODY_MESSAGES,
+        max_tiny_messages: int = DEFAULT_MAX_TINY_BODY_MESSAGES,
     ) -> None:
+        """Initialize the request body guard.
+
+        Args:
+            app: Downstream ASGI application.
+            max_bytes: Maximum accepted request body size in bytes.
+            max_tiny_messages: Maximum tiny continuation frames accepted.
+        """
         self.app = app
         self.max_bytes = max_bytes
-        self.max_messages = max_messages
+        self.max_tiny_messages = max_tiny_messages
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """Forward a bounded request or return a 413 response."""
+        """Forward a bounded request or return a 413 response.
+
+        Args:
+            scope: Current ASGI connection scope.
+            receive: Callable that yields request messages.
+            send: Callable that sends response messages.
+        """
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -50,10 +64,17 @@ class RequestBodyLimitMiddleware:
 
     async def _read_request_message(self, receive: Receive) -> Message | None:
         buffered_body = bytearray()
-        for _message_count in range(self.max_messages):
+        tiny_messages = 0
+        while True:
             message = await receive()
             if message["type"] == "http.request":
                 chunk = message.get("body", b"")
+                if len(chunk) < MIN_EFFICIENT_BODY_CHUNK_BYTES and message.get(
+                    "more_body", False
+                ):
+                    tiny_messages += 1
+                    if tiny_messages > self.max_tiny_messages:
+                        return None
                 if len(chunk) > self.max_bytes - len(buffered_body):
                     return None
                 buffered_body.extend(chunk)
@@ -65,7 +86,6 @@ class RequestBodyLimitMiddleware:
                     }
             elif message["type"] == "http.disconnect":
                 return message
-        return None
 
     @staticmethod
     def _content_length(scope: Scope) -> int | None:
@@ -84,7 +104,8 @@ class RequestBodyLimitMiddleware:
             content={
                 "status": "error",
                 "error_message": (
-                    f"Request body exceeds the {max_mebibytes} MiB limit"
+                    "Request body exceeds the configured transport limits "
+                    f"({max_mebibytes} MiB maximum)"
                 ),
                 "total_processing_time_ms": 0,
             },

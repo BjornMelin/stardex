@@ -74,7 +74,14 @@ app.add_middleware(
 
 
 def summarize_request_validation_error(exc: RequestValidationError) -> str:
-    """Summarize validation failures without reflecting rejected request data."""
+    """Summarize validation failures without reflecting rejected request data.
+
+    Args:
+        exc: FastAPI request validation error.
+
+    Returns:
+        A bounded, non-reflective validation summary.
+    """
     errors = exc.errors()
     details: list[str] = []
 
@@ -114,7 +121,15 @@ def summarize_request_validation_error(exc: RequestValidationError) -> str:
 async def request_validation_error_handler(
     _request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    """Return request validation errors using the ClusteringResponse shape."""
+    """Return request validation errors using the ClusteringResponse shape.
+
+    Args:
+        _request: Request associated with the validation failure.
+        exc: FastAPI request validation error.
+
+    Returns:
+        A 422 JSON response with the public error schema.
+    """
     payload = ClusteringResponse(
         status="error",
         error_message=summarize_request_validation_error(exc),
@@ -136,6 +151,13 @@ def perform_all_clustering(
 
     K-means runs for every non-empty repository set. Hierarchical algorithms run
     for sets of 2 through 250 repositories.
+
+    Args:
+        request: Validated clustering request.
+        http_response: Mutable FastAPI response metadata.
+
+    Returns:
+        Available clustering results or a public error response.
     """
     start_time = time.perf_counter()
     descriptions = extract_repo_descriptions(request.repositories)

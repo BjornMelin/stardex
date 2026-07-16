@@ -3,7 +3,8 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.clustering import perform_pca_hierarchical
+from app import clustering
+from app.clustering import DENSE_TFIDF_MAX_FEATURES, perform_pca_hierarchical
 from app.main import app
 from app.models import (
     MAX_CLUSTERING_REPOSITORIES,
@@ -187,7 +188,9 @@ def test_request_rejects_declared_body_above_byte_limit(client: TestClient) -> N
     assert response.status_code == 413
     assert response.json() == {
         "status": "error",
-        "error_message": "Request body exceeds the 16 MiB limit",
+        "error_message": (
+            "Request body exceeds the configured transport limits (16 MiB maximum)"
+        ),
         "total_processing_time_ms": 0,
     }
 
@@ -277,6 +280,23 @@ def test_pca_components_clamp_to_feature_count() -> None:
 
     assert effective_components == 2
     assert_partition({"clusters": clusters}, len(descriptions))
+
+
+def test_dense_algorithms_cap_tfidf_features(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed_limits: list[int | None] = []
+    select_vectorizer = clustering._select_vectorizer  # noqa: SLF001
+
+    def tracked_vectorizer(data: list[str], max_features: int | None = None) -> object:
+        observed_limits.append(max_features)
+        return select_vectorizer(data, max_features=max_features)
+
+    monkeypatch.setattr(clustering, "_select_vectorizer", tracked_vectorizer)
+    descriptions = ["python data", "typescript web"]
+
+    clustering.perform_hierarchical(descriptions)
+    clustering.perform_pca_hierarchical(descriptions)
+
+    assert observed_limits == [DENSE_TFIDF_MAX_FEATURES, DENSE_TFIDF_MAX_FEATURES]
 
 
 def test_stop_word_only_descriptions_use_character_fallback(

@@ -6,6 +6,9 @@ from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
+DENSE_TFIDF_MAX_FEATURES = 10_000
+
+
 def _validate_inputs(data: list[str]) -> None:
     if not data:
         message = "At least 1 repository is required for clustering"
@@ -23,14 +26,18 @@ def _validate_dense_inputs(data: list[str]) -> None:
         raise ValueError(message)
 
 
-def _select_vectorizer(data: list[str]) -> TfidfVectorizer:
+def _select_vectorizer(
+    data: list[str], max_features: int | None = None
+) -> TfidfVectorizer:
     """Use word features when available and character features as a fallback."""
-    vectorizer = TfidfVectorizer(stop_words="english")
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=max_features)
     analyze = vectorizer.build_analyzer()
     if any(analyze(text) for text in data):
         return vectorizer
 
-    return TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5))
+    return TfidfVectorizer(
+        analyzer="char_wb", ngram_range=(2, 5), max_features=max_features
+    )
 
 
 def perform_kmeans(
@@ -44,6 +51,9 @@ def perform_kmeans(
 
     Returns:
         Cluster mapping and the effective number of clusters.
+
+    Raises:
+        ValueError: If repository descriptions are missing or all blank.
     """
     _validate_inputs(data)
     effective_num_clusters = min(num_clusters, len(data))
@@ -75,10 +85,13 @@ def perform_hierarchical(
 
     Returns:
         Dictionary mapping cluster IDs to indices of data points.
+
+    Raises:
+        ValueError: If fewer than two descriptions are provided or all are blank.
     """
     _validate_dense_inputs(data)
 
-    vectorizer = _select_vectorizer(data)
+    vectorizer = _select_vectorizer(data, max_features=DENSE_TFIDF_MAX_FEATURES)
     dense_features = vectorizer.fit_transform(data).toarray()  # type: ignore[union-attr]
 
     linkage_matrix = linkage(dense_features, method="ward")
@@ -103,10 +116,13 @@ def perform_pca_hierarchical(
 
     Returns:
         Cluster mapping and the effective number of PCA components.
+
+    Raises:
+        ValueError: If fewer than two descriptions are provided or all are blank.
     """
     _validate_dense_inputs(data)
 
-    vectorizer = _select_vectorizer(data)
+    vectorizer = _select_vectorizer(data, max_features=DENSE_TFIDF_MAX_FEATURES)
     dense_features = vectorizer.fit_transform(data).toarray()  # type: ignore[union-attr]
 
     effective_components = min(n_components, len(data), dense_features.shape[1])
