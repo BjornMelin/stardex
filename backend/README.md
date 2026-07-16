@@ -198,13 +198,13 @@ The clustering service uses:
 - A 250-repository boundary around dense Ward/PCA computation
 - Effective parameter reporting so callers can explain clamped values
 
-Sets larger than 250 repositories use sparse K-means only. Benchmarking throughput for very large sets remains workload-dependent.
+Sets of 251 through 1,000 repositories use sparse K-means only.
 
 ## Limits and Validation
 
 The `POST /clustering` request model enforces safe defaults and limits:
 
-- `repositories`: 1 or more items
+- `repositories`: 1 to 1,000 items
 - `kmeans_clusters`: 1 to 20, clamped to the repository count
 - `hierarchical_threshold`: greater than 0 and at most 10
 - `pca_components`: 1 to 50, clamped to the repository and TF-IDF feature counts

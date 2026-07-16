@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.clustering import perform_pca_hierarchical
 from app.main import app
-from app.models import ClusteringRequest
+from app.models import MAX_CLUSTERING_REPOSITORIES, ClusteringRequest
 
 
 RESULT_FIELDS = frozenset(
@@ -121,13 +121,25 @@ def test_clustering_cardinality_contract(
         )
 
 
-@pytest.mark.parametrize("count", [251, 1_000])
-def test_request_model_accepts_large_repository_sets(count: int) -> None:
+@pytest.mark.parametrize("count", [251, MAX_CLUSTERING_REPOSITORIES])
+def test_request_model_accepts_supported_large_repository_sets(count: int) -> None:
     request = ClusteringRequest.model_validate(
         {"repositories": make_repositories(count)}
     )
 
     assert len(request.repositories) == count
+
+
+def test_request_rejects_repository_sets_above_limit(client: TestClient) -> None:
+    response = client.post(
+        "/clustering",
+        json={"repositories": make_repositories(MAX_CLUSTERING_REPOSITORIES + 1)},
+    )
+
+    assert response.status_code == 422
+    payload: dict[str, object] = response.json()
+    assert payload["status"] == "error"
+    assert RESULT_FIELDS.isdisjoint(payload)
 
 
 @pytest.mark.parametrize(

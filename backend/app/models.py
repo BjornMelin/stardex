@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+MAX_CLUSTERING_REPOSITORIES = 1_000
 MAX_DESCRIPTION_CHARS = 2_000
 MAX_TOPICS = 50
 
@@ -46,6 +47,7 @@ class ClusteringRequest(BaseModel):
         ...,
         description="List of GitHub repositories to cluster",
         min_length=1,
+        max_length=MAX_CLUSTERING_REPOSITORIES,
     )
     kmeans_clusters: int = Field(
         default=5,
