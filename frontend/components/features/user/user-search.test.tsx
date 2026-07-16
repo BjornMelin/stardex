@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { searchUsers } from "@/lib/github";
 import { UserSearch } from "./user-search";
 
-const { mockRouterPush, queryState, store } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
+const { queryClient, queryState, store } = vi.hoisted(() => ({
+  queryClient: { invalidateQueries: vi.fn() },
   queryState: { lastKey: undefined as string | undefined },
   store: {
     selectedUsers: [] as string[],
@@ -13,10 +13,6 @@ const { mockRouterPush, queryState, store } = vi.hoisted(() => ({
     clearUsers: vi.fn(),
     setShouldFetchRepos: vi.fn(),
   },
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockRouterPush }),
 }));
 
 vi.mock("next/image", () => ({
@@ -36,6 +32,7 @@ vi.mock("@/store/github", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => queryClient,
   useQuery: (opts: { queryKey: unknown; queryFn: () => unknown; enabled?: boolean }) => {
     if (opts.enabled) {
       const serialized = JSON.stringify(opts.queryKey);
@@ -110,17 +107,29 @@ describe("UserSearch", () => {
     expect(mockedSearchUsers).toHaveBeenCalledWith("oct");
   });
 
-  it("pressing Enter triggers fetch + navigation when at least one user is selected", () => {
+  it("the Search button invalidates an existing repository query", () => {
     store.selectedUsers = ["octocat"];
 
     render(<UserSearch />);
 
-    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-    const input = screen.getByPlaceholderText("Search GitHub users...") as HTMLInputElement;
-    fireEvent.keyDown(input, { key: "Enter" });
+    expect(store.setShouldFetchRepos).toHaveBeenCalledTimes(2);
+    expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(queryClient.invalidateQueries).toHaveBeenLastCalledWith({
+      queryKey: ["starredRepos", ["octocat"]],
+    });
+  });
 
-    expect(store.setShouldFetchRepos).toHaveBeenCalledWith(true);
-    expect(mockRouterPush).toHaveBeenCalledWith("/");
+  it("stacks selected-user actions below the desktop breakpoint", () => {
+    store.selectedUsers = ["octocat"];
+
+    render(<UserSearch />);
+
+    const combobox = screen.getByRole("combobox");
+    expect(combobox.parentElement).toHaveClass("grid", "grid-cols-[minmax(0,1fr)_auto]", "sm:flex");
+    expect(combobox).toHaveClass("col-span-2", "sm:col-span-1");
+    expect(screen.getByRole("button", { name: "Search" })).toHaveClass("w-full", "sm:w-auto");
   });
 });

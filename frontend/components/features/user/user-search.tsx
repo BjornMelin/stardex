@@ -1,9 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,8 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 import { githubUsernameSchema, searchUsers } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
+/**
+ * Selects GitHub users whose starred repositories should be loaded.
+ *
+ * @returns The user picker and selected-user controls.
+ */
 export function UserSearch() {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -45,6 +49,12 @@ export function UserSearch() {
     };
   }, []);
 
+  const requestRepositories = useCallback(() => {
+    setShouldFetchRepos(true);
+    // RepositoryList owns refetch errors; invalidation intentionally runs in the background.
+    void queryClient.invalidateQueries({ queryKey: ["starredRepos", selectedUsers] });
+  }, [queryClient, selectedUsers, setShouldFetchRepos]);
+
   const handleSearch = useCallback((search: string) => {
     setInputValue(search);
 
@@ -61,16 +71,6 @@ export function UserSearch() {
       setSearchValue(search);
     }, 250);
   }, []);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && selectedUsers.length > 0) {
-        setShouldFetchRepos(true);
-        router.push("/");
-      }
-    },
-    [router, selectedUsers.length, setShouldFetchRepos]
-  );
 
   const handleSelect = useCallback(
     (username: string) => {
@@ -98,10 +98,14 @@ export function UserSearch() {
     <div className="w-full max-w-2xl mx-auto space-y-4">
       <div className="flex flex-wrap gap-2 min-h-[2.5rem]">
         {selectedUsers.map((user) => (
-          <Badge key={user} variant="secondary" className="h-8 text-base gap-2">
+          <Badge
+            key={user}
+            variant="secondary"
+            className="min-h-11 gap-2 text-base sm:h-8 sm:min-h-0"
+          >
             {user}
             <button
-              className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="ml-1 inline-flex h-11 w-11 items-center justify-center rounded-full ring-offset-background outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 sm:h-7 sm:w-7"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   removeUser(user);
@@ -119,14 +123,14 @@ export function UserSearch() {
           </Badge>
         ))}
       </div>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between"
+              className="col-span-2 min-h-11 w-full justify-between sm:col-span-1 sm:min-h-0"
             >
               <Search className="mr-2 h-4 w-4" />
               Search GitHub users...
@@ -138,8 +142,7 @@ export function UserSearch() {
                 placeholder="Search GitHub users..."
                 value={inputValue}
                 onValueChange={handleSearch}
-                onKeyDown={handleKeyDown}
-                className="h-9"
+                className="h-11 text-base sm:h-9 sm:text-sm"
               />
               <CommandList>
                 <CommandEmpty>No users found.</CommandEmpty>
@@ -150,7 +153,12 @@ export function UserSearch() {
                     </CommandItem>
                   ) : (
                     users?.map((user) => (
-                      <CommandItem key={user.id} value={user.login} onSelect={handleSelect}>
+                      <CommandItem
+                        key={user.id}
+                        value={user.login}
+                        onSelect={handleSelect}
+                        className="min-h-11 sm:min-h-0"
+                      >
                         <Image
                           src={user.avatar_url}
                           alt={user.login}
@@ -171,11 +179,8 @@ export function UserSearch() {
           <>
             <Button
               variant="default"
-              onClick={() => {
-                setShouldFetchRepos(true);
-                router.push("/");
-              }}
-              className="shrink-0"
+              onClick={requestRepositories}
+              className="min-h-11 w-full sm:min-h-0 sm:w-auto sm:shrink-0"
             >
               Search
             </Button>
@@ -186,7 +191,7 @@ export function UserSearch() {
                 setShouldFetchRepos(false);
                 clearUsers();
               }}
-              className="shrink-0"
+              className="h-11 w-11 shrink-0 sm:h-10 sm:w-10"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Clear all</span>

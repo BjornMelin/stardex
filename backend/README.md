@@ -10,7 +10,7 @@ Backend service for the GitHub Stars Explorer, providing advanced repository clu
   - Ward hierarchical clustering for sets of 2 through 250 repositories
   - PCA + hierarchical clustering for sets of 2 through 250 repositories
 
-- **Performance metrics**: Read processing time for each algorithm
+- **Performance metrics**: Report processing time for each algorithm
 - **Flexible parameters**: Set clustering behavior within documented bounds
 - **Cross-origin resource sharing (CORS)**: Configure frontend origins
 

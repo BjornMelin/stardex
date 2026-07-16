@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { githubUsernameSchema, RateLimitError, searchUsers } from "./github";
+import {
+  getContributionIssuesUrl,
+  githubUsernameSchema,
+  RateLimitError,
+  searchUsers,
+} from "./github";
 
 describe("githubUsernameSchema", () => {
   it("accepts valid usernames", () => {
@@ -46,6 +51,18 @@ describe("githubUsernameSchema", () => {
     expect(() => githubUsernameSchema.parse("user name")).toThrow();
     expect(() => githubUsernameSchema.parse("user@name")).toThrow();
     expect(() => githubUsernameSchema.parse("user!name")).toThrow();
+  });
+});
+
+describe("getContributionIssuesUrl", () => {
+  it("builds a repository-scoped native GitHub issue search", () => {
+    const url = new URL(getContributionIssuesUrl("vercel/next.js"));
+
+    expect(url.origin).toBe("https://github.com");
+    expect(url.pathname).toBe("/vercel/next.js/issues");
+    expect(url.searchParams.get("q")).toBe(
+      'is:issue is:open no:assignee label:"good first issue","help wanted" sort:updated-desc'
+    );
   });
 });
 

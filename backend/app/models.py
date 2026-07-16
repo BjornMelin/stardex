@@ -29,7 +29,9 @@ class GitHubRepo(BaseModel):
     id: int = Field(..., ge=1)
     name: str = Field(..., min_length=1, max_length=200)
     full_name: str = Field(..., min_length=1, max_length=512)
-    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_CHARS)
+    description: str | None = Field(
+        default=None, max_length=MAX_DESCRIPTION_CHARS
+    )
     html_url: str = Field(..., min_length=1, max_length=2_048)
     stargazers_count: int = Field(..., ge=0)
     forks_count: int = Field(..., ge=0)
@@ -37,7 +39,9 @@ class GitHubRepo(BaseModel):
     size: int = Field(..., ge=0)
     watchers_count: int = Field(..., ge=0)
     language: str | None = Field(default=None, max_length=128)
-    topics: list[GitHubTopic] = Field(default_factory=list, max_length=MAX_TOPICS)
+    topics: list[GitHubTopic] = Field(
+        default_factory=list, max_length=MAX_TOPICS
+    )
     owner: GitHubOwner
     updated_at: str = Field(..., min_length=1, max_length=64)
 
@@ -106,7 +110,9 @@ class ClusteringResponse(BaseModel):
     pca_hierarchical_clusters: ClusterResult | None = Field(
         default=None, description="Results from PCA + hierarchical clustering"
     )
-    error_message: str | None = Field(default=None, description="Error message, if any")
+    error_message: str | None = Field(
+        default=None, description="Error message, if any"
+    )
     total_processing_time_ms: float = Field(
         ..., description="Total time taken for all clustering operations"
     )
@@ -130,7 +136,10 @@ class ClusteringResponse(BaseModel):
                 "pca_hierarchical_clusters": {
                     "algorithm": "pca_hierarchical",
                     "clusters": {"0": [0, 2, 4], "1": [1, 3, 5]},
-                    "parameters": {"n_components": 6, "distance_threshold": 1.5},
+                    "parameters": {
+                        "n_components": 6,
+                        "distance_threshold": 1.5,
+                    },
                     "processing_time_ms": 180.7,
                 },
                 "total_processing_time_ms": 531.5,

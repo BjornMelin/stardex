@@ -10,6 +10,12 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
+/**
+ * Pages through an already filtered repository collection.
+ *
+ * @param props - Pagination state and its page-change callback.
+ * @returns Pagination controls for the filtered collection.
+ */
 export function RepositoryPagination({
   currentPage,
   totalItems,
@@ -17,7 +23,7 @@ export function RepositoryPagination({
   isLoading,
   onPageChange,
 }: PaginationProps) {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
   return (
     <div className="sticky bottom-0 flex items-center justify-between gap-2 bg-background/95 backdrop-blur p-4 border-t">
@@ -30,6 +36,7 @@ export function RepositoryPagination({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1 || isLoading}
+          className="h-11 sm:h-9"
         >
           Previous
         </Button>
@@ -38,6 +45,7 @@ export function RepositoryPagination({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages || isLoading}
+          className="h-11 sm:h-9"
         >
           Next
         </Button>

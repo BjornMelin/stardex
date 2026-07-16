@@ -22,7 +22,9 @@ def _validate_inputs(data: list[str]) -> None:
 def _validate_dense_inputs(data: list[str]) -> None:
     _validate_inputs(data)
     if len(data) < 2:
-        message = "At least 2 repositories are required for hierarchical clustering"
+        message = (
+            "At least 2 repositories are required for hierarchical clustering"
+        )
         raise ValueError(message)
 
 
@@ -30,7 +32,9 @@ def _select_vectorizer(
     data: list[str], max_features: int | None = None
 ) -> TfidfVectorizer:
     """Use word features when available and character features as a fallback."""
-    vectorizer = TfidfVectorizer(stop_words="english", max_features=max_features)
+    vectorizer = TfidfVectorizer(
+        stop_words="english", max_features=max_features
+    )
     analyze = vectorizer.build_analyzer()
     if any(analyze(text) for text in data):
         return vectorizer
@@ -64,7 +68,11 @@ def perform_kmeans(
     vectorizer = _select_vectorizer(data)
     features = vectorizer.fit_transform(data)
 
-    kmeans = KMeans(n_clusters=effective_num_clusters, random_state=42, n_init="auto")
+    kmeans = KMeans(
+        n_clusters=effective_num_clusters,
+        random_state=42,
+        n_init="auto",
+    )
     labels = kmeans.fit_predict(features)
 
     clusters: dict[int, list[int]] = {}
@@ -87,15 +95,19 @@ def perform_hierarchical(
         Dictionary mapping cluster IDs to indices of data points.
 
     Raises:
-        ValueError: If fewer than two descriptions are provided or all are blank.
+        ValueError: If fewer than two descriptions are provided or all are
+            blank.
     """
     _validate_dense_inputs(data)
 
     vectorizer = _select_vectorizer(data, max_features=DENSE_TFIDF_MAX_FEATURES)
-    dense_features = vectorizer.fit_transform(data).toarray()  # type: ignore[union-attr]
+    sparse_features = vectorizer.fit_transform(data)
+    dense_features = sparse_features.toarray()  # type: ignore[union-attr]
 
     linkage_matrix = linkage(dense_features, method="ward")
-    labels = fcluster(linkage_matrix, t=distance_threshold, criterion="distance")
+    labels = fcluster(
+        linkage_matrix, t=distance_threshold, criterion="distance"
+    )
 
     clusters: dict[int, list[int]] = {}
     for idx, label in enumerate(labels):
@@ -118,12 +130,14 @@ def perform_pca_hierarchical(
         Cluster mapping and the effective number of PCA components.
 
     Raises:
-        ValueError: If fewer than two descriptions are provided or all are blank.
+        ValueError: If fewer than two descriptions are provided or all are
+            blank.
     """
     _validate_dense_inputs(data)
 
     vectorizer = _select_vectorizer(data, max_features=DENSE_TFIDF_MAX_FEATURES)
-    dense_features = vectorizer.fit_transform(data).toarray()  # type: ignore[union-attr]
+    sparse_features = vectorizer.fit_transform(data)
+    dense_features = sparse_features.toarray()  # type: ignore[union-attr]
 
     effective_components = min(n_components, len(data), dense_features.shape[1])
 
@@ -131,7 +145,9 @@ def perform_pca_hierarchical(
     reduced_features = pca.fit_transform(dense_features)
 
     linkage_matrix = linkage(reduced_features, method="ward")
-    labels = fcluster(linkage_matrix, t=distance_threshold, criterion="distance")
+    labels = fcluster(
+        linkage_matrix, t=distance_threshold, criterion="distance"
+    )
 
     clusters: dict[int, list[int]] = {}
     for idx, label in enumerate(labels):

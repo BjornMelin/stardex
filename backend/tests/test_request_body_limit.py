@@ -9,7 +9,11 @@ from app.request_body_limit import RequestBodyLimitMiddleware
 
 
 def make_scope() -> Scope:
-    """Build a minimal HTTP scope for direct ASGI middleware tests."""
+    """Build a minimal HTTP scope for direct ASGI middleware tests.
+
+    Returns:
+        A deterministic HTTP connection scope.
+    """
     return cast(
         "Scope",
         {
@@ -31,7 +35,14 @@ def make_scope() -> Scope:
 
 
 def make_receive(messages: Iterator[Message]) -> Receive:
-    """Return an ASGI receive callable over deterministic messages."""
+    """Return an ASGI receive callable over deterministic messages.
+
+    Args:
+        messages: Request messages to yield in order.
+
+    Returns:
+        An ASGI receive callable backed by ``messages``.
+    """
 
     async def receive() -> Message:
         try:
@@ -50,7 +61,10 @@ def test_valid_multiframe_body_is_coalesced_before_forwarding() -> None:
         observed.append(await receive())
         await JSONResponse({"status": "ok"})(scope, receive, send)
 
-    middleware = RequestBodyLimitMiddleware(cast("ASGIApp", downstream), max_bytes=8)
+    middleware = RequestBodyLimitMiddleware(
+        cast("ASGIApp", downstream),
+        max_bytes=8,
+    )
     receive = make_receive(
         iter(
             [
@@ -81,7 +95,10 @@ def test_oversized_multiframe_body_is_rejected_before_forwarding() -> None:
         downstream_called = True
         await JSONResponse({"status": "ok"})(scope, receive, send)
 
-    middleware = RequestBodyLimitMiddleware(cast("ASGIApp", downstream), max_bytes=8)
+    middleware = RequestBodyLimitMiddleware(
+        cast("ASGIApp", downstream),
+        max_bytes=8,
+    )
     receive = make_receive(
         iter(
             [
@@ -148,16 +165,12 @@ def test_valid_nine_mebibyte_body_accepts_eight_kibibyte_frames() -> None:
         cast("ASGIApp", downstream), max_bytes=9 * 1024 * 1024
     )
     receive = make_receive(
-        iter(
-            [
-                {
-                    "type": "http.request",
-                    "body": chunk,
-                    "more_body": index < chunk_count - 1,
-                }
-                for index in range(chunk_count)
-            ]
-        )
+        {
+            "type": "http.request",
+            "body": chunk,
+            "more_body": index < chunk_count - 1,
+        }
+        for index in range(chunk_count)
     )
     sent: list[Message] = []
 

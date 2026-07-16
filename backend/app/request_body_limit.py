@@ -28,7 +28,12 @@ class RequestBodyLimitMiddleware:
         self.max_bytes = max_bytes
         self.max_tiny_messages = max_tiny_messages
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
         """Forward a bounded request or return a 413 response.
 
         Args:
@@ -97,7 +102,12 @@ class RequestBodyLimitMiddleware:
                     return None
         return None
 
-    async def _send_rejection(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def _send_rejection(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
         max_mebibytes = self.max_bytes // (1024 * 1024)
         response = JSONResponse(
             status_code=413,

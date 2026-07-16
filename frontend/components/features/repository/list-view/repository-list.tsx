@@ -18,6 +18,11 @@ import { useToast } from "@/hooks/use-toast";
 import { GitHubRepo, getStarredRepos, RateLimitError } from "@/lib/github";
 import { useGitHubStore } from "@/store/github";
 
+/**
+ * Displays the filtered repository collection and derives its current page.
+ *
+ * @returns The repository list, loading state, or empty state.
+ */
 export function RepositoryList() {
   const {
     selectedUsers,
@@ -25,12 +30,12 @@ export function RepositoryList() {
     shouldFetchRepos,
     pagination: { currentPage, itemsPerPage },
     setCurrentPage,
-    resetPagination,
+    getFilteredAndSortedRepos,
   } = useGitHubStore();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetchedAfterMount, isRefetchError } = useQuery({
     queryKey: ["starredRepos", selectedUsers],
     queryFn: async () => {
       const results = await Promise.all(
@@ -50,16 +55,10 @@ export function RepositoryList() {
   });
 
   useEffect(() => {
-    if (data) {
-      data.forEach(({ username, repos }) => {
-        setRepos(username, repos);
-      });
+    if (data && isFetchedAfterMount && !isRefetchError) {
+      setRepos(Object.fromEntries(data.map(({ username, repos }) => [username, repos])));
     }
-  }, [data, setRepos]);
-
-  useEffect(() => {
-    resetPagination();
-  }, [selectedUsers, resetPagination]);
+  }, [data, isFetchedAfterMount, isRefetchError, setRepos]);
 
   useEffect(() => {
     if (error) {
@@ -80,8 +79,17 @@ export function RepositoryList() {
     }
   }, [error, toast]);
 
-  const currentPageRepos = useGitHubStore((state) => state.getCurrentPageRepos());
-  const allRepos = useGitHubStore((state) => state.getFilteredAndSortedRepos());
+  const allRepos = getFilteredAndSortedRepos();
+  const lastPage = Math.max(1, Math.ceil(allRepos.length / itemsPerPage));
+  const effectivePage = Math.min(currentPage, lastPage);
+  const pageStart = (effectivePage - 1) * itemsPerPage;
+  const currentPageRepos = allRepos.slice(pageStart, pageStart + itemsPerPage);
+
+  useEffect(() => {
+    if (currentPage !== effectivePage) {
+      setCurrentPage(effectivePage);
+    }
+  }, [currentPage, effectivePage, setCurrentPage]);
 
   if (selectedUsers.length === 0) {
     return <RepositoryEmptyState />;
@@ -90,12 +98,12 @@ export function RepositoryList() {
   return (
     <div className="space-y-8">
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list" className="flex items-center gap-2">
+        <TabsList className="grid h-auto min-h-11 w-full grid-cols-2 p-0 sm:h-10 sm:min-h-0 sm:p-1">
+          <TabsTrigger value="list" className="min-h-11 gap-2 sm:min-h-0">
             <BookOpen className="h-4 w-4" />
             All Stars
           </TabsTrigger>
-          <TabsTrigger value="similar" className="flex items-center gap-2">
+          <TabsTrigger value="similar" className="min-h-11 gap-2 sm:min-h-0">
             <Star className="h-4 w-4" />
             Similar Repos
           </TabsTrigger>
@@ -103,24 +111,26 @@ export function RepositoryList() {
 
         <TabsContent value="list" className="mt-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0 flex-1">
                 <RepositoryFilters />
               </div>
-              <RepositoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              <div className="self-end sm:self-auto">
+                <RepositoryViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
             </div>
 
             {isLoading ? (
               <RepositoryLoading />
             ) : (
-              <ScrollArea className="h-[600px] rounded-md border">
+              <ScrollArea className="h-auto rounded-md border sm:h-[600px]">
                 <div className="p-4 space-y-4">
                   {currentPageRepos.map((repo: GitHubRepo) => (
                     <RepositoryCard key={repo.id} repo={repo} viewMode={viewMode} />
                   ))}
                 </div>
                 <RepositoryPagination
-                  currentPage={currentPage}
+                  currentPage={effectivePage}
                   totalItems={allRepos.length}
                   itemsPerPage={itemsPerPage}
                   isLoading={isLoading}

@@ -41,6 +41,24 @@ export interface GitHubList {
 }
 
 const GITHUB_API_BASE = "https://api.github.com";
+const CONTRIBUTION_ISSUES_QUERY =
+  'is:issue is:open no:assignee label:"good first issue","help wanted" sort:updated-desc';
+
+/**
+ * Build a native GitHub search for current, unassigned contribution issues.
+ *
+ * @param fullName - GitHub repository name in `owner/repository` form.
+ * @returns A repository-scoped GitHub issues URL.
+ */
+export function getContributionIssuesUrl(fullName: string): string {
+  const [owner, repository] = fullName.split("/", 2);
+  const url = new URL(
+    `/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/issues`,
+    "https://github.com"
+  );
+  url.searchParams.set("q", CONTRIBUTION_ISSUES_QUERY);
+  return url.toString();
+}
 
 export class RateLimitError extends Error {
   constructor(
