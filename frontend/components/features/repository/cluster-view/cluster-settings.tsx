@@ -39,7 +39,7 @@ export function ClusterSettings({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2"
+              className="h-11 px-3 sm:h-7 sm:px-2"
               onClick={() => setShowingSettings(!showingSettings)}
             >
               {showingSettings ? "Filters" : "Settings"}
@@ -50,7 +50,7 @@ export function ClusterSettings({
                   aria-label="Clustering help"
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0"
+                  className="h-11 w-11 p-0 sm:h-7 sm:w-7"
                   title="Clustering help"
                 >
                   <HelpCircle className="h-4 w-4" />

@@ -30,7 +30,7 @@ export function ClusterCard({ cluster, isExpanded, onToggle }: ClusterCardProps)
           <Button
             variant="ghost"
             size="sm"
-            className="p-1 h-auto"
+            className="h-11 w-11 p-0 sm:h-6 sm:w-6"
             aria-label={`${isExpanded ? "Collapse" : "Expand"} ${cluster.metadata.name}`}
             aria-controls={repositoriesId}
             aria-expanded={isExpanded}

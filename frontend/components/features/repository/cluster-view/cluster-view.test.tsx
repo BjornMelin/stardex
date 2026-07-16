@@ -25,6 +25,8 @@ describe("ClusterView", () => {
       />
     );
 
+    expect(screen.getByRole("textbox", { name: "Search clusters" })).toBeInTheDocument();
+
     const hideButton = screen.getByRole("button", { name: "Hide cluster settings" });
     const panelId = hideButton.getAttribute("aria-controls") ?? "";
     expect(hideButton).toHaveAttribute("aria-expanded", "true");

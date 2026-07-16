@@ -72,7 +72,7 @@ export function ClusterView({
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 h-12 w-6 border shadow-sm bg-background"
+            className="absolute right-0 top-1/2 z-10 h-12 w-11 -translate-y-1/2 translate-x-1/2 border bg-background shadow-sm sm:w-6"
             aria-label={isSettingsCollapsed ? "Show cluster settings" : "Hide cluster settings"}
             aria-controls={settingsPanelId}
             aria-expanded={!isSettingsCollapsed}
@@ -105,6 +105,7 @@ export function ClusterView({
               </div>
               <div className="flex gap-4 items-center">
                 <Input
+                  aria-label="Search clusters"
                   placeholder="Search clusters..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
