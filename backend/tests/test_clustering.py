@@ -5,7 +5,11 @@ from fastapi.testclient import TestClient
 
 from app.clustering import perform_pca_hierarchical
 from app.main import app
-from app.models import MAX_CLUSTERING_REPOSITORIES, ClusteringRequest
+from app.models import (
+    MAX_CLUSTERING_REPOSITORIES,
+    MAX_CLUSTERING_REQUEST_BYTES,
+    ClusteringRequest,
+)
 
 
 RESULT_FIELDS = frozenset(
@@ -147,6 +151,79 @@ def test_request_rejects_repository_sets_above_limit(client: TestClient) -> None
     assert "at most 1000 items" in str(payload["error_message"])
     assert "must-not-be-reflected" not in response.text
     assert len(response.content) < 2_048
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_request_validation_never_reflects_extra_field_names(
+    client: TestClient, nested: bool
+) -> None:
+    sentinel = "attacker-controlled-field-name"
+    request: dict[str, object] = {"repositories": make_repositories(1)}
+    if nested:
+        repository = request["repositories"]
+        assert isinstance(repository, list)
+        assert isinstance(repository[0], dict)
+        repository[0][sentinel] = True
+    else:
+        request[sentinel] = True
+
+    response = client.post("/clustering", json=request)
+
+    assert response.status_code == 422
+    assert sentinel not in response.text
+    assert len(response.content) < 2_048
+
+
+def test_request_rejects_declared_body_above_byte_limit(client: TestClient) -> None:
+    response = client.post(
+        "/clustering",
+        content=b"{}",
+        headers={
+            "Content-Type": "application/json",
+            "Content-Length": str(MAX_CLUSTERING_REQUEST_BYTES + 1),
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "status": "error",
+        "error_message": "Request body exceeds the 16 MiB limit",
+        "total_processing_time_ms": 0,
+    }
+
+
+def test_request_rejects_body_above_byte_limit_without_content_length(
+    client: TestClient,
+) -> None:
+    chunk = b"x" * (1024 * 1024)
+
+    response = client.post(
+        "/clustering",
+        content=(chunk for _ in range(17)),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["status"] == "error"
+
+
+@pytest.mark.parametrize(
+    "topics",
+    [
+        ["topic"] * 21,
+        ["x" * 51],
+    ],
+)
+def test_request_rejects_topics_outside_github_limits(
+    client: TestClient, topics: list[str]
+) -> None:
+    repositories = make_repositories(1)
+    repositories[0]["topics"] = topics
+
+    response = client.post("/clustering", json={"repositories": repositories})
+
+    assert response.status_code == 422
+    assert response.json()["status"] == "error"
 
 
 @pytest.mark.parametrize(

@@ -1,13 +1,17 @@
 """Pydantic models for the Stardex API."""
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 MAX_CLUSTERING_REPOSITORIES = 1_000
+MAX_CLUSTERING_REQUEST_BYTES = 16 * 1024 * 1024
 MAX_DESCRIPTION_CHARS = 2_000
-MAX_TOPICS = 50
+MAX_TOPICS = 20
+MAX_TOPIC_CHARS = 50
+
+GitHubTopic = Annotated[str, Field(min_length=1, max_length=MAX_TOPIC_CHARS)]
 
 
 class GitHubOwner(BaseModel):
@@ -33,7 +37,7 @@ class GitHubRepo(BaseModel):
     size: int = Field(..., ge=0)
     watchers_count: int = Field(..., ge=0)
     language: str | None = Field(default=None, max_length=128)
-    topics: list[str] = Field(default_factory=list, max_length=MAX_TOPICS)
+    topics: list[GitHubTopic] = Field(default_factory=list, max_length=MAX_TOPICS)
     owner: GitHubOwner
     updated_at: str = Field(..., min_length=1, max_length=64)
 

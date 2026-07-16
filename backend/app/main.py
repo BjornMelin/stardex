@@ -16,7 +16,15 @@ from app.clustering import (
     perform_kmeans,
     perform_pca_hierarchical,
 )
-from app.models import ClusteringRequest, ClusteringResponse, ClusterResult, GitHubRepo
+from app.models import (
+    MAX_CLUSTERING_REQUEST_BYTES,
+    ClusteringRequest,
+    ClusteringResponse,
+    ClusterResult,
+    GitHubOwner,
+    GitHubRepo,
+)
+from app.request_body_limit import RequestBodyLimitMiddleware
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +40,15 @@ app = FastAPI(
     description="API for clustering GitHub repositories using multiple algorithms",
 )
 
+SAFE_VALIDATION_LOCATION_PARTS = frozenset(
+    {
+        "body",
+        *ClusteringRequest.model_fields,
+        *GitHubRepo.model_fields,
+        *GitHubOwner.model_fields,
+    }
+)
+
 
 def parse_cors_origins(raw: str | None) -> list[str]:
     """Parse a comma-separated CORS origins string."""
@@ -41,7 +58,12 @@ def parse_cors_origins(raw: str | None) -> list[str]:
     return origins or ["http://localhost:3000"]
 
 
-# Configure CORS
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=MAX_CLUSTERING_REQUEST_BYTES,
+)
+
+# Configure CORS outside the request limit so rejection responses include CORS headers.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parse_cors_origins(os.getenv("CORS_ORIGINS")),
@@ -61,11 +83,16 @@ def summarize_request_validation_error(exc: RequestValidationError) -> str:
             continue
 
         location = error.get("loc")
-        path = (
-            ".".join(str(part) for part in location)
-            if isinstance(location, (list, tuple))
-            else ""
-        )
+        safe_path_parts: list[str] = []
+        if isinstance(location, (list, tuple)):
+            for part in location:
+                if isinstance(part, int):
+                    safe_path_parts.append(str(part))
+                elif isinstance(part, str) and part in SAFE_VALIDATION_LOCATION_PARTS:
+                    safe_path_parts.append(part)
+                else:
+                    break
+        path = ".".join(safe_path_parts)
         message = error.get("msg")
         if not isinstance(message, str):
             continue

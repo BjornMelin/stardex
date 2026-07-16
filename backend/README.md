@@ -53,6 +53,10 @@ export CORS_ORIGINS="http://localhost:3000"
 
 Performs clustering on the provided repository data. Every valid request returns K-means. A singleton or a set larger than 250 omits hierarchical result fields.
 
+Requests may contain 1 to 1,000 repositories in at most 16 MiB. Each repository
+may include up to 20 topics of at most 50 characters each, matching GitHub's
+topic limits.
+
 This singleton request asks for more clusters and PCA components than the data supports:
 
 ```json
